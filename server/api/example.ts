@@ -1,0 +1,1 @@
+export default defineEventHandler(async e => await example_module().example_api_handler(e))
