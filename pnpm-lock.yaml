@@ -42,6 +42,9 @@ importers:
       '@antfu/ni':
         specifier: ^30.0.0
         version: 30.0.0
+      git-cz:
+        specifier: ^4.9.0
+        version: 4.9.0
 
 packages:
 
@@ -2031,6 +2034,10 @@ packages:
 
   giget@3.1.2:
     resolution: {integrity: sha512-T2qUpKBHeUTwHcIhydgnJzhL0Hj785ms+JkxaaWQH9SDM/llXeewnOkfJcFShAHjWI+26hOChwUfCoupaXLm8g==}
+    hasBin: true
+
+  git-cz@4.9.0:
+    resolution: {integrity: sha512-cSRL8IIOXU7UFLdbziCYqg8f8InwLwqHezkiRHNSph7oZqGv0togId1kMTfKil6gzK0VaSXeVBb4oDl0fQCHiw==}
     hasBin: true
 
   glob-parent@5.1.2:
@@ -5380,6 +5387,8 @@ snapshots:
       pathe: 2.0.3
 
   giget@3.1.2: {}
+
+  git-cz@4.9.0: {}
 
   glob-parent@5.1.2:
     dependencies:
