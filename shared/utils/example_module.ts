@@ -56,10 +56,10 @@ export const use_example_module = () => {
         }),
     }),
 
-    contacts: z.array(z.object({
+    contacts: z.object({
       type: z.enum(['email', 'phone']),
       value: z.string().min(3, '联系方式至少3个字符'),
-    })).min(1, '至少添加一项联系方式'),
+    }).array().min(1, '至少添加一项联系方式'),
   })
 
   const example_form_default: z.infer<typeof example_form_schema> = {

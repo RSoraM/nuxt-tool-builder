@@ -50,6 +50,7 @@
         <div class="flex gap-2 items-center">
           <slot name="prefix"></slot>
           <input type="checkbox" class="toggle" :checked="Boolean(scalarValue)"
+            :autocomplete="field.autocomplete ?? 'off'"
             @change="scalarValue = ($event.target as HTMLInputElement).checked">
           <slot name="append"></slot>
         </div>
@@ -66,22 +67,23 @@
         <slot name="prefix"></slot>
 
         <select v-if="field.type === 'select'" class="select select-bordered w-full join-item"
-          :value="(scalarValue as string | undefined) ?? ''"
+          :autocomplete="field.autocomplete ?? 'off'" :value="(scalarValue as string | undefined) ?? ''"
           @change="scalarValue = ($event.target as HTMLSelectElement).value">
           <option value="" disabled>请选择</option>
           <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
 
         <textarea v-else-if="field.type === 'textarea'" class="textarea textarea-bordered w-full join-item"
-          :placeholder="field.placeholder" :value="(scalarValue as string | undefined) ?? ''"
+          :placeholder="field.placeholder" :autocomplete="field.autocomplete ?? 'off'"
+          :value="(scalarValue as string | undefined) ?? ''"
           @input="scalarValue = ($event.target as HTMLTextAreaElement).value" />
 
         <input v-else-if="field.type === 'number'" type="number" class="input input-bordered w-full join-item"
-          :placeholder="field.placeholder" :value="scalarValue ?? ''"
+          :placeholder="field.placeholder" :autocomplete="field.autocomplete ?? 'off'" :value="scalarValue ?? ''"
           @input="updateNumberValue(($event.target as HTMLInputElement).value)">
 
         <input v-else :type="field.type" class="input input-bordered w-full join-item" :placeholder="field.placeholder"
-          :value="(scalarValue as string | undefined) ?? ''"
+          :autocomplete="field.autocomplete ?? 'off'" :value="(scalarValue as string | undefined) ?? ''"
           @input="scalarValue = ($event.target as HTMLInputElement).value">
 
         <slot name="append"></slot>

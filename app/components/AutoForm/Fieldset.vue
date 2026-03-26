@@ -22,8 +22,6 @@
 <script setup lang="ts">
 import { z } from 'zod/v4'
 
-import { zod_error_to_form_errors } from '../../../shared/utils/auto_form_kit'
-
 const props = defineProps<{
   schema: z.ZodTypeAny
 }>()
