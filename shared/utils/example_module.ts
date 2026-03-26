@@ -116,35 +116,8 @@ export const use_example_module = () => {
     }
   })
 
-  const example_form_default: z.infer<typeof example_form_schema> = {
-    username: '',
-    password: '',
-
-    role: 'guest',
-    is_active: true,
-    is_test: true,
-
-    age: undefined,
-    profile: {
-      nickname: '',
-      bio: '',
-    },
-    contacts: [
-      {
-        type: 'email',
-        value: '',
-      },
-    ],
-    union_field: {
-      type: 'type_1',
-      t1_key: '',
-      t1_token: '',
-    },
-  }
-
   return {
     example_form: {
-      default: example_form_default,
       schema: example_form_schema,
     }
   }

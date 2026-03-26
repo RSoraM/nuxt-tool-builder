@@ -26,7 +26,7 @@
 import { z } from 'zod/v4'
 
 const props = defineProps<{
-  schema: z.ZodTypeAny
+  schema: z.ZodObject
 }>()
 
 const data = ref<any>(undefined)

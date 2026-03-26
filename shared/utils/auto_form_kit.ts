@@ -270,13 +270,12 @@ export const build_initial_value = (field: form_field_config): unknown => {
   return ''
 }
 
-/**
- * Main entry: parse root schema shape, recursively generate field tree, filter hidden, compile defaults
- */
-export const auto_form_kit = (schema: z.ZodTypeAny): {
+export function auto_form_kit<S extends z.ZodObject<any, any>>(
+  schema: S
+): {
   fields: form_field_config[]
-  defaults: Record<string, unknown>
-} => {
+  defaults: z.infer<S>
+} {
   const { core } = unwrap_schema(schema)
 
   if (!(core instanceof z.ZodObject)) {
@@ -288,9 +287,9 @@ export const auto_form_kit = (schema: z.ZodTypeAny): {
     .map(filter_visible_field)
     .filter((field): field is form_field_config => field !== null)
 
-  const defaults: Record<string, unknown> = {}
+  const defaults = {} as z.infer<S>
   for (const field of all_fields) {
-    defaults[field.key] = build_initial_value(field)
+    (defaults as any)[field.key] = build_initial_value(field)
   }
 
   return {
