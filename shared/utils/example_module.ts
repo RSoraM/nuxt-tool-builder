@@ -21,7 +21,13 @@ export const use_example_module = () => {
         },
       }),
 
-    role: z.enum(['admin', 'operator', 'guest']),
+    role: z.enum(['admin', 'operator', 'guest'])
+      .meta({
+        form: {
+          label: '角色',
+          placeholder: '请选择角色',
+        },
+      }),
 
     is_active: z.boolean()
       .default(true),

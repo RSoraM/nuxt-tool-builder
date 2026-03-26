@@ -289,8 +289,6 @@ export const set_value_at_path = (target: Record<string, any>, path: string, val
 }
 
 export const build_initial_value = (field: form_field_config): unknown => {
-  console.log(field)
-
   if (field.default_value !== undefined) {
     return structuredClone(field.default_value)
   }

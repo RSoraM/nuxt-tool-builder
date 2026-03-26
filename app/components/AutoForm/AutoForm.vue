@@ -24,6 +24,10 @@
 <script setup lang="ts">
 import { z } from 'zod/v4'
 
+const props = defineProps<{
+  schema: z.ZodTypeAny
+}>()
+
 interface auto_form_error_result {
   form_errors: string[]
   field_errors: Record<string, string[]>
@@ -69,10 +73,6 @@ const zod_error_to_form_errors = (error: z.ZodError): auto_form_error_result => 
 
   return result
 }
-
-const props = defineProps<{
-  schema: z.ZodTypeAny
-}>()
 
 const { fields, defaults } = auto_form_kit(props.schema)
 const model = reactive<Record<string, unknown>>(structuredClone(defaults))
