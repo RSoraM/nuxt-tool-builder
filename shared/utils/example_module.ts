@@ -21,10 +21,6 @@ export const use_example_module = () => {
         },
       }),
 
-    extant_list: z.boolean()
-      .default(true)
-      .array(),
-
     role: z.enum(['admin', 'operator', 'guest']),
 
     is_active: z.boolean()
@@ -54,24 +50,6 @@ export const use_example_module = () => {
             placeholder: '介绍一下你自己',
           },
         }),
-    }).superRefine((profile, ctx) => {
-      // object 内部字段级错误: 定位到 profile.bio
-      if (profile.nickname && !profile.bio) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['bio'],
-          message: '填写昵称后，请补充个人简介',
-        })
-      }
-
-      // object 级错误: 挂在 profile 自身 (path 为空)
-      if (profile.nickname === 'root') {
-        ctx.addIssue({
-          code: 'custom',
-          path: [],
-          message: 'profile 分组错误示例: nickname 不能为 root',
-        })
-      }
     }),
 
     contacts: z.object({
@@ -100,6 +78,19 @@ export const use_example_module = () => {
         })
       }
     }),
+
+    union_field: z.discriminatedUnion('type', [
+      z.object({
+        type: z.literal('type_1'),
+        t1_key: z.string().min(2, 't1_key 至少2个字符'),
+        t1_token: z.string().min(2, 't1_token 至少2个字符'),
+      }),
+      z.object({
+        type: z.literal('type_2'),
+        t2_key: z.string().min(2, 't2_key 至少2个字符'),
+        t2_token: z.string().min(2, 't2_token 至少2个字符'),
+      }),
+    ])
   }).superRefine((form, ctx) => {
     // root 级跨字段错误: 无法由单个 fieldset 完整替代
     if (form.role === 'admin' && !form.contacts.some(item => item.type === 'phone')) {
@@ -122,7 +113,6 @@ export const use_example_module = () => {
   const example_form_default: z.infer<typeof example_form_schema> = {
     username: '',
     password: '',
-    extant_list: [],
 
     role: 'guest',
     is_active: true,
@@ -139,6 +129,11 @@ export const use_example_module = () => {
         value: '',
       },
     ],
+    union_field: {
+      type: 'type_1',
+      t1_key: '',
+      t1_token: '',
+    },
   }
 
   return {

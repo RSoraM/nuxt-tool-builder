@@ -2,7 +2,7 @@ import { z } from 'zod/v4'
 
 /* inferface ================================================================ */
 
-type form_field_type = 'text' | 'number' | 'password' | 'select' | 'checkbox' | 'textarea' | 'object' | 'array'
+type form_field_type = 'text' | 'number' | 'password' | 'select' | 'checkbox' | 'textarea' | 'object' | 'array' | 'discriminated_union'
 
 interface form_field_options {
   label: string
@@ -23,6 +23,9 @@ export interface form_field_config {
   default_value?: unknown
   children?: form_field_config[]
   item?: form_field_config
+  discriminator?: string
+  variants?: Record<string, form_field_config[]>
+  variant_defaults?: Record<string, Record<string, unknown>>
 }
 
 /**
@@ -126,6 +129,19 @@ const filter_visible_field = (field: form_field_config): form_field_config | nul
     }
   }
 
+  if (field.type === 'discriminated_union' && field.variants) {
+    const filtered_variants: Record<string, form_field_config[]> = {}
+    for (const [key, children] of Object.entries(field.variants)) {
+      filtered_variants[key] = children
+        .map(filter_visible_field)
+        .filter((child): child is form_field_config => child !== null)
+    }
+    return {
+      ...field,
+      variants: filtered_variants,
+    }
+  }
+
   return field
 }
 
@@ -177,6 +193,43 @@ const build_field = (key: string, schema: z.ZodTypeAny, parent_path: string | un
       options: meta.options ?? core.options.map(option => ({
         label: to_label(String(option)),
         value: String(option),
+      })),
+    }
+  }
+
+  if (core instanceof z.ZodDiscriminatedUnion) {
+    const discriminator: string = (core as any)._zod.def.discriminator
+    const options_arr = (core as any)._zod.def.options as z.ZodObject<any>[]
+    const variants: Record<string, form_field_config[]> = {}
+    const variant_defaults: Record<string, Record<string, unknown>> = {}
+
+    for (const variant_schema of options_arr) {
+      const shape = (variant_schema as z.ZodObject<any>).shape
+      const { core: disc_core } = unwrap_schema(shape[discriminator] as z.ZodTypeAny)
+      const literal_value = String((disc_core as any)._zod.def.values[0])
+
+      const all_children = Object.entries(shape)
+        .filter(([k]) => k !== discriminator)
+        .map(([k, s]) => build_field(k, s as z.ZodTypeAny, path))
+
+      variants[literal_value] = all_children
+
+      const vd: Record<string, unknown> = { [discriminator]: literal_value }
+      for (const child of all_children) {
+        vd[child.key] = build_initial_value(child)
+      }
+      variant_defaults[literal_value] = vd
+    }
+
+    return {
+      ...base_config,
+      type: 'discriminated_union',
+      discriminator,
+      variants,
+      variant_defaults,
+      options: Object.keys(variants).map(key => ({
+        label: to_label(key),
+        value: key,
       })),
     }
   }
@@ -236,6 +289,8 @@ export const set_value_at_path = (target: Record<string, any>, path: string, val
 }
 
 export const build_initial_value = (field: form_field_config): unknown => {
+  console.log(field)
+
   if (field.default_value !== undefined) {
     return structuredClone(field.default_value)
   }
@@ -252,6 +307,11 @@ export const build_initial_value = (field: form_field_config): unknown => {
       value[child.key] = build_initial_value(child)
     }
     return value
+  }
+
+  if (field.type === 'discriminated_union' && field.variant_defaults) {
+    const firstKey = Object.keys(field.variant_defaults)[0] ?? ''
+    return structuredClone(field.variant_defaults[firstKey] ?? {})
   }
 
   return ''

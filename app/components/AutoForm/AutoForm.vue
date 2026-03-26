@@ -8,8 +8,9 @@
       </div>
 
       <template v-for="field in fields" :key="field.key">
-        <AutoFormFieldset v-if="field.type === 'object' || field.type === 'array'" :field="field" :model="model"
-          :errors="fieldErrors" :path="field.path ?? ''" />
+        <AutoFormFieldset
+          v-if="field.type === 'object' || field.type === 'array' || field.type === 'discriminated_union'"
+          :field="field" :model="model" :errors="fieldErrors" :path="field.path ?? ''" />
         <AutoFormField v-else :field="field" :model="model" :errors="fieldErrors" :path="field.path ?? ''" />
       </template>
 
