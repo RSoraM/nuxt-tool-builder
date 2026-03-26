@@ -55,13 +55,6 @@ const to_label = (value: string) => {
     : 'Element'
 }
 
-const parse_path = (path: string) => {
-  return path
-    .split('-')
-    .filter(Boolean)
-    .map(segment => /^\d+$/.test(segment) ? Number(segment) : segment)
-}
-
 const unwrap_schema = (schema: z.ZodTypeAny) => {
   let core = schema
   let required = true
@@ -249,44 +242,6 @@ const build_field = (key: string, schema: z.ZodTypeAny, parent_path: string | un
 }
 
 /* main ===================================================================== */
-
-export const get_value_at_path = (target: unknown, path: string) => {
-  if (!path) {
-    return target
-  }
-
-  const tokens = parse_path(path)
-  let cursor = target as any
-
-  for (const token of tokens) {
-    if (cursor == null) {
-      return undefined
-    }
-    cursor = cursor[token as any]
-  }
-
-  return cursor
-}
-
-export const set_value_at_path = (target: Record<string, any>, path: string, value: unknown) => {
-  const tokens = parse_path(path)
-  if (!tokens.length) {
-    return
-  }
-
-  let cursor: any = target
-  for (let i = 0; i < tokens.length - 1; i += 1) {
-    const token = tokens[i]
-    const nextToken = tokens[i + 1]
-
-    if (cursor[token as any] == null) {
-      cursor[token as any] = typeof nextToken === 'number' ? [] : {}
-    }
-    cursor = cursor[token as any]
-  }
-
-  cursor[tokens[tokens.length - 1] as any] = value
-}
 
 export const build_initial_value = (field: form_field_config): unknown => {
   if (field.default_value !== undefined) {

@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="validate">
+  <form @submit.prevent>
     <fieldset class="fieldset border border-base-300 rounded-box p-4">
       <slot name="legend"></slot>
 
@@ -10,12 +10,13 @@
       <template v-for="field in fields" :key="field.key">
         <AutoFormFieldset
           v-if="field.type === 'object' || field.type === 'array' || field.type === 'discriminated_union'"
-          :field="field" :model="model" :errors="fieldErrors" :path="field.path ?? ''" />
-        <AutoFormField v-else :field="field" :model="model" :errors="fieldErrors" :path="field.path ?? ''" />
+          :field="field" :parent="model" :node-key="field.key" :errors="fieldErrors" :path="field.path ?? ''" />
+        <AutoFormField v-else :field="field" :parent="model" :node-key="field.key" :errors="fieldErrors"
+          :path="field.path ?? ''" />
       </template>
 
-      <slot name="submit" :validate="validate" :model="model" :errors="fieldErrors" :form-errors="formErrors">
-        <button type="button" class="btn btn-primary btn-block mt-4" @click="validate">校验</button>
+      <slot name="submit" :data="data" :errors="fieldErrors" :form_errors="formErrors">
+        <button type="button" class="btn btn-primary btn-block mt-4" :disabled="!data">校验已自动执行</button>
       </slot>
     </fieldset>
   </form>
@@ -28,8 +29,10 @@ const props = defineProps<{
   schema: z.ZodTypeAny
 }>()
 
+const data = ref<any>(undefined)
+
 const { fields, defaults } = auto_form_kit(props.schema)
-const model = reactive<Record<string, unknown>>(structuredClone(defaults))
+const model = reactive<any>(structuredClone(defaults))
 const fieldErrors = reactive<Record<string, string[]>>({})
 const formErrors = ref<string[]>([])
 
@@ -86,34 +89,42 @@ const clearErrors = () => {
   formErrors.value = []
 }
 
-const validate = () => {
-  clearErrors()
+// 自动校验
+watch(
+  model,
+  () => {
+    clearErrors()
+    data.value = undefined
 
-  const payload = toRaw(model)
-  const result = props.schema.safeParse(payload)
-  if (result.success)
-    return {
-      valid: true,
-      data: result.data,
+    const payload = toRaw(model)
+    const result = props.schema.safeParse(payload)
+    if (result.success) {
+      data.value = model
+      return {
+        valid: true,
+        data: result.data,
+      }
     }
 
-  const nextErrors = parse_form_error(result.error)
-  formErrors.value = nextErrors.form_errors
+    const nextErrors = parse_form_error(result.error)
+    formErrors.value = nextErrors.form_errors
+    data.value = undefined
 
-  for (const [path, messages] of Object.entries(nextErrors.field_errors) as Array<[string, string[]]>) {
-    fieldErrors[path] = messages
-  }
+    for (const [path, messages] of Object.entries(nextErrors.field_errors) as Array<[string, string[]]>) {
+      fieldErrors[path] = messages
+    }
 
-  return {
-    valid: false,
-    data: payload,
-  }
-}
+    return {
+      valid: false,
+      data: undefined,
+    }
+  },
+  { immediate: true }
+)
 
 defineExpose({
-  model,
-  fieldErrors,
-  formErrors,
-  validate,
+  data,
+  errors: fieldErrors,
+  form_errors: formErrors,
 })
 </script>

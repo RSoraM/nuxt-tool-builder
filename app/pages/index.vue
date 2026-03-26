@@ -8,8 +8,9 @@
         </p>
 
         <AutoForm :schema="example_form.schema">
-          <template #submit="{ validate }">
-            <button type="button" class="btn btn-primary mt-4" @click="handleSubmit(validate)">提交示例</button>
+          <template #submit="{ data }">
+            <button type="button" class="btn btn-primary mt-4" :disabled="!data"
+              @click="handleSubmit(data)">提交示例</button>
           </template>
         </AutoForm>
       </div>
@@ -46,18 +47,15 @@ const clearServerErrors = () => {
   serverMessage.value = ''
 }
 
-const handleSubmit = async (validate: () => { valid: boolean; data: unknown }) => {
+const handleSubmit = async (data: Record<string, unknown> | undefined) => {
   clearServerErrors()
 
-  const checked = validate()
-  if (!checked.valid) {
-    return
-  }
+  if (!data) return
 
   try {
     const response = await $fetch('/api/example', {
       method: 'POST',
-      body: checked.data as Record<string, unknown>,
+      body: data,
     })
 
     submitResult.value = response as Record<string, unknown>

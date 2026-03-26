@@ -13,8 +13,9 @@
       <template v-for="child in field.children" :key="`${fullPath}-${child.key}`">
         <AutoFormFieldset
           v-if="child.type === 'object' || child.type === 'array' || child.type === 'discriminated_union'"
-          :field="child" :model="model" :errors="errors" :path="fullPath" />
-        <AutoFormField v-else :field="child" :model="model" :errors="errors" :path="fullPath" />
+          :field="child" :parent="nodeValue" :node-key="child.key" :errors="errors" :path="childPath(child)" />
+        <AutoFormField v-else :field="child" :parent="nodeValue" :node-key="child.key" :errors="errors"
+          :path="childPath(child)" />
       </template>
     </template>
 
@@ -22,7 +23,7 @@
       <template v-for="(_, index) in arrayValue" :key="`${fullPath}-${index}`">
         <AutoFormFieldset
           v-if="field.item!.type === 'object' || field.item!.type === 'array' || field.item!.type === 'discriminated_union'"
-          :field="field.item!" :model="model" :errors="errors" :path="`${fullPath}-${index}`">
+          :field="field.item!" :parent="arrayValue" :node-key="index" :errors="errors" :path="itemPath(index)">
           <template #legend>
             <legend class="fieldset-legend w-full justify-between">
               {{ field.label }} - {{ index + 1 }}
@@ -31,7 +32,8 @@
           </template>
         </AutoFormFieldset>
 
-        <AutoFormField v-else :field="field.item!" :model="model" :errors="errors" :path="`${fullPath}-${index}`">
+        <AutoFormField v-else :field="field.item!" :parent="arrayValue" :node-key="index" :errors="errors"
+          :path="itemPath(index)">
           <template #append>
             <button type="button" class="btn btn-primary btn-sm join-item" @click="removeArrayItem(index)">删除</button>
           </template>
@@ -53,8 +55,9 @@
       <template v-for="child in currentVariantChildren" :key="`${fullPath}-${child.key}`">
         <AutoFormFieldset
           v-if="child.type === 'object' || child.type === 'array' || child.type === 'discriminated_union'"
-          :field="child" :model="model" :errors="errors" :path="fullPath" />
-        <AutoFormField v-else :field="child" :model="model" :errors="errors" :path="fullPath" />
+          :field="child" :parent="nodeValue" :node-key="child.key" :errors="errors" :path="childPath(child)" />
+        <AutoFormField v-else :field="child" :parent="nodeValue" :node-key="child.key" :errors="errors"
+          :path="childPath(child)" />
       </template>
 
       <p v-if="fieldError" class="label text-error text-xs">{{ fieldError }}</p>
@@ -69,21 +72,44 @@ defineOptions({
 
 const props = withDefaults(defineProps<{
   field: form_field_config
-  model: Record<string, unknown>
+  parent: any
+  nodeKey: string | number
   errors: Record<string, string[]>
   path?: string
 }>(), {
   path: '',
 })
 
-const fullPath = computed(() => {
-  if (props.field.path !== undefined) return props.field.path
-  if (!props.field.key) return props.path
-  return props.path ? `${props.path}-${props.field.key}` : props.field.key
+const fullPath = computed(() => props.path ?? '')
+
+const nodeValue = computed({
+  get: () => props.parent?.[props.nodeKey],
+  set: (value: unknown) => {
+    props.parent[props.nodeKey] = value
+  },
 })
 
+const appendPath = (base: string, segment: string | number) => {
+  const value = String(segment)
+  return base ? `${base}-${value}` : value
+}
+
+const childPath = (child: form_field_config) => {
+  if (child.path !== undefined) {
+    return child.path
+  }
+  if (!child.key) {
+    return fullPath.value
+  }
+  return appendPath(fullPath.value, child.key)
+}
+
+const itemPath = (index: number) => {
+  return appendPath(fullPath.value, index)
+}
+
 const arrayValue = computed(() => {
-  const value = get_value_at_path(props.model, fullPath.value)
+  const value = nodeValue.value
   return Array.isArray(value) ? value : []
 })
 
@@ -92,18 +118,20 @@ const fieldError = computed(() => props.errors[fullPath.value]?.[0])
 const addArrayItem = () => {
   const next = [...arrayValue.value]
   next.push(build_initial_value(props.field.item!))
-  set_value_at_path(props.model, fullPath.value, next)
+  nodeValue.value = next
 }
 
 const removeArrayItem = (index: number) => {
   const next = [...arrayValue.value]
   next.splice(index, 1)
-  set_value_at_path(props.model, fullPath.value, next)
+  nodeValue.value = next
 }
 
 const discriminatorValue = computed(() => {
   if (!props.field.discriminator) return ''
-  return String(get_value_at_path(props.model, `${fullPath.value}-${props.field.discriminator}`) ?? '')
+  const value = nodeValue.value
+  if (value == null || typeof value !== 'object') return ''
+  return String((value as Record<string, any>)[props.field.discriminator] ?? '')
 })
 
 const currentVariantChildren = computed(() => {
@@ -114,6 +142,6 @@ const currentVariantChildren = computed(() => {
 const handleDiscriminatorChange = (event: Event) => {
   if (!props.field.discriminator || !props.field.variant_defaults) return
   const newKey = (event.target as HTMLSelectElement).value
-  set_value_at_path(props.model, fullPath.value, structuredClone(props.field.variant_defaults[newKey] ?? { [props.field.discriminator]: newKey }))
+  nodeValue.value = structuredClone(props.field.variant_defaults[newKey] ?? { [props.field.discriminator]: newKey })
 }
 </script>

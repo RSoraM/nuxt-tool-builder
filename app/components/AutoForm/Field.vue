@@ -54,22 +54,21 @@
 <script setup lang="ts">
 const props = withDefaults(defineProps<{
   field: form_field_config
-  model: Record<string, unknown>
+  parent: any
+  nodeKey: string | number
   errors: Record<string, string[]>
   path?: string
 }>(), {
   path: '',
 })
 
-const fullPath = computed(() => {
-  if (props.field.path !== undefined) return props.field.path
-  if (!props.field.key) return props.path
-  return props.path ? `${props.path}-${props.field.key}` : props.field.key
-})
+const fullPath = computed(() => props.path ?? '')
 
 const scalarValue = computed({
-  get: () => get_value_at_path(props.model, fullPath.value),
-  set: (value: unknown) => set_value_at_path(props.model, fullPath.value, value),
+  get: () => props.parent?.[props.nodeKey],
+  set: (value: unknown) => {
+    props.parent[props.nodeKey] = value
+  },
 })
 
 const fieldError = computed(() => props.errors[fullPath.value]?.[0])
