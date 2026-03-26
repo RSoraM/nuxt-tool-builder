@@ -10,13 +10,33 @@ export type form_field_type =
   | 'object'
   | 'array'
 
+export interface form_field_option {
+  label: string
+  value: string
+}
+
+export interface form_field_meta {
+  label?: string
+  type?: form_field_type
+  placeholder?: string
+  options?: form_field_option[]
+  hidden?: boolean
+  description?: string
+}
+
+interface form_schema_meta {
+  form?: form_field_meta
+}
+
 export interface form_field_config {
   key: string
   type: form_field_type
   label: string
   required: boolean
   placeholder?: string
-  options?: { label: string; value: string }[]
+  options?: form_field_option[]
+  hidden?: boolean
+  description?: string
   default_value?: unknown
   children?: form_field_config[]
   item?: form_field_config
@@ -25,6 +45,11 @@ export interface form_field_config {
 export interface auto_form_result {
   fields: form_field_config[]
   defaults: Record<string, unknown>
+}
+
+export interface auto_form_error_result {
+  form_errors: string[]
+  field_errors: Record<string, string[]>
 }
 
 const to_label = (value: string) => {
@@ -132,74 +157,93 @@ const unwrap_schema = (schema: z.ZodTypeAny) => {
   }
 }
 
-const default_from_schema = (schema: z.ZodTypeAny) => {
-  const result = schema.safeParse(undefined)
-  return result.success ? result.data : undefined
+
+
+const filter_visible_field = (field: form_field_config): form_field_config | null => {
+  if (field.hidden) {
+    return null
+  }
+
+  if (field.type === 'object') {
+    return {
+      ...field,
+      children: (field.children ?? [])
+        .map(filter_visible_field)
+        .filter((child): child is form_field_config => child !== null),
+    }
+  }
+
+  if (field.type === 'array' && field.item) {
+    const item = filter_visible_field(field.item)
+    if (!item) {
+      return null
+    }
+
+    return {
+      ...field,
+      item,
+    }
+  }
+
+  return field
 }
 
-const base_type = (schema: z.ZodTypeAny): form_field_type => {
-  if (schema instanceof z.ZodBoolean) {
-    return 'checkbox'
-  }
-  if (schema instanceof z.ZodNumber) {
-    return 'number'
-  }
-  if (schema instanceof z.ZodEnum) {
-    return 'select'
-  }
-  if (schema instanceof z.ZodString) {
-    return 'text'
-  }
-  return 'text'
-}
-
+// Recursively expand schema layers, extract metadata, and build field configuration tree
 const build_field = (key: string, schema: z.ZodTypeAny): form_field_config => {
   const { core, required } = unwrap_schema(schema)
-  const default_value = default_from_schema(schema)
+  const parsed_default = schema.safeParse(undefined)
+  const default_value = parsed_default.success ? parsed_default.data : undefined
+  const meta = ((schema.meta() as form_schema_meta | undefined)?.form ?? {})
+
+  const base_config = {
+    key,
+    label: meta.label ?? to_label(key),
+    required,
+    placeholder: meta.placeholder,
+    hidden: meta.hidden,
+    description: meta.description,
+    default_value,
+  }
 
   if (core instanceof z.ZodObject) {
     const shape = core.shape
     return {
-      key,
+      ...base_config,
       type: 'object',
-      label: to_label(key),
-      required,
-      default_value,
       children: Object.entries(shape).map(([childKey, childSchema]) => build_field(childKey, childSchema as z.ZodTypeAny)),
     }
   }
 
   if (core instanceof z.ZodArray) {
     return {
-      key,
+      ...base_config,
       type: 'array',
-      label: to_label(key),
-      required,
-      default_value,
       item: build_field('', core.element as unknown as z.ZodTypeAny),
     }
   }
 
   if (core instanceof z.ZodEnum) {
     return {
-      key,
-      type: 'select',
-      label: to_label(key),
-      required,
-      default_value,
-      options: core.options.map(option => ({
+      ...base_config,
+      type: meta.type ?? 'select',
+      options: meta.options ?? core.options.map(option => ({
         label: to_label(String(option)),
         value: String(option),
       })),
     }
   }
 
+  const computed_type: form_field_type = core instanceof z.ZodBoolean
+    ? 'checkbox'
+    : core instanceof z.ZodNumber
+      ? 'number'
+      : core instanceof z.ZodString
+        ? 'text'
+        : 'text'
+
   return {
-    key,
-    type: base_type(core),
-    label: to_label(key),
-    required,
-    default_value,
+    ...base_config,
+    type: meta.type ?? computed_type,
   }
 }
 
@@ -225,37 +269,59 @@ export const build_initial_value = (field: form_field_config): unknown => {
   return ''
 }
 
-const build_defaults_from_fields = (fields: form_field_config[]) => {
-  const defaults: Record<string, unknown> = {}
-  for (const field of fields) {
-    defaults[field.key] = build_initial_value(field)
+const append_path = (base: string, segment: string | number) => {
+  if (typeof segment === 'number') {
+    return `${base}[${segment}]`
   }
-  return defaults
+
+  return base ? `${base}.${segment}` : segment
 }
 
-export const zod_issue_path_to_string = (path: Array<PropertyKey>) => {
-  let result = ''
-
-  for (const part of path) {
-    if (typeof part === 'number') {
-      result += `[${part}]`
-      continue
+const collect_tree_errors = (
+  node: { errors: string[]; properties?: Record<string, any>; items?: Array<any | undefined> },
+  path: string,
+  result: auto_form_error_result,
+) => {
+  if (path && node.errors.length) {
+    if (!result.field_errors[path]) {
+      result.field_errors[path] = []
     }
-
-    if (typeof part === 'symbol') {
-      continue
-    }
-
-    if (!result) {
-      result = part
-    } else {
-      result += `.${part}`
-    }
+    result.field_errors[path].push(...node.errors)
+  } else if (!path && node.errors.length) {
+    result.form_errors.push(...node.errors)
   }
+
+  for (const [key, child] of Object.entries(node.properties ?? {})) {
+    if (!child) {
+      continue
+    }
+
+    collect_tree_errors(child, append_path(path, key), result)
+  }
+
+  for (const [index, child] of (node.items ?? []).entries()) {
+    if (!child) {
+      continue
+    }
+
+    collect_tree_errors(child, append_path(path, index), result)
+  }
+}
+
+// Transform Zod error tree into form-consumable structure: root errors + path-mapped field errors
+export const zod_error_to_form_errors = (error: z.ZodError): auto_form_error_result => {
+  const tree = z.treeifyError(error)
+  const result: auto_form_error_result = {
+    form_errors: [],
+    field_errors: {},
+  }
+
+  collect_tree_errors(tree, '', result)
 
   return result
 }
 
+// Main entry: parse root schema shape, recursively generate field tree, filter hidden, compile defaults
 export const auto_form_kit = (schema: z.ZodTypeAny): auto_form_result => {
   const { core } = unwrap_schema(schema)
 
@@ -263,10 +329,18 @@ export const auto_form_kit = (schema: z.ZodTypeAny): auto_form_result => {
     throw new Error('auto_form_kit requires a ZodObject root schema.')
   }
 
-  const fields = Object.entries(core.shape).map(([key, itemSchema]) => build_field(key, itemSchema as z.ZodTypeAny))
+  const all_fields = Object.entries(core.shape).map(([key, itemSchema]) => build_field(key, itemSchema as z.ZodTypeAny))
+  const fields = all_fields
+    .map(filter_visible_field)
+    .filter((field): field is form_field_config => field !== null)
+
+  const defaults: Record<string, unknown> = {}
+  for (const field of all_fields) {
+    defaults[field.key] = build_initial_value(field)
+  }
 
   return {
     fields,
-    defaults: build_defaults_from_fields(fields),
+    defaults,
   }
 }

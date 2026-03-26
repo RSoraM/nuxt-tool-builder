@@ -89,6 +89,7 @@
     </template>
 
 
+    <p v-if="field.description" class="label text-xs text-base-content/60">{{ field.description }}</p>
     <p v-if="fieldError" class="label text-error text-xs">{{ fieldError }}</p>
   </template>
 </template>
@@ -101,7 +102,7 @@ defineOptions({
 const props = withDefaults(defineProps<{
   field: form_field_config
   model: Record<string, unknown>
-  errors: Record<string, string>
+  errors: Record<string, string[]>
   path?: string
 }>(), {
   path: '',
@@ -129,7 +130,7 @@ const arrayValue = computed(() => {
   return Array.isArray(value) ? value : []
 })
 
-const fieldError = computed(() => props.errors[fullPath.value])
+const fieldError = computed(() => props.errors[fullPath.value]?.[0])
 
 const addArrayItem = () => {
   const next = [...arrayValue.value]
