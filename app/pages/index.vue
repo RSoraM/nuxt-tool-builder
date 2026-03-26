@@ -7,11 +7,11 @@
           该页面由 schema 自动生成字段，支持嵌套对象和数组，提交时执行前端与后端双重校验。
         </p>
 
-        <AutoFormFieldset :schema="example_form.schema">
+        <AutoForm :schema="example_form.schema">
           <template #submit="{ validate }">
             <button type="button" class="btn btn-primary mt-4" @click="handleSubmit(validate)">提交示例</button>
           </template>
-        </AutoFormFieldset>
+        </AutoForm>
       </div>
     </section>
 

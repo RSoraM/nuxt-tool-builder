@@ -1,72 +1,81 @@
 <template>
-  <form @submit.prevent="validate">
-    <fieldset class="fieldset border border-base-300 rounded-box p-4">
-      <slot name="legend">
-        <!-- <legend class="fieldset-legend">表单字段</legend> -->
-      </slot>
+  <fieldset class="fieldset border border-base-300 rounded-box p-4">
+    <slot name="legend">
+      <legend v-if="field.type === 'object'" class="fieldset-legend">{{ field.label }}</legend>
+      <legend v-else-if="field.type === 'array'" class="fieldset-legend w-full justify-between">
+        {{ field.label }}
+        <button type="button" class="btn btn-primary btn-sm" @click="addArrayItem">新增</button>
+      </legend>
+    </slot>
 
-      <div v-if="formErrors.length" class="mb-4 rounded-box border border-error/30 bg-error/10 p-3 text-sm text-error">
-        <p v-for="(message, index) in formErrors" :key="`${index}-${message}`">{{ message }}</p>
-      </div>
+    <template v-if="field.type === 'object'">
+      <template v-for="child in field.children" :key="`${fullPath}-${child.key}`">
+        <AutoFormFieldset v-if="child.type === 'object' || child.type === 'array'" :field="child" :model="model"
+          :errors="errors" :path="fullPath" />
+        <AutoFormField v-else :field="child" :model="model" :errors="errors" :path="fullPath" />
+      </template>
+    </template>
 
-      <AutoFormField v-for="field in fields" :key="field.key" :field="field" :model="model" :errors="fieldErrors"
-        path="" />
+    <template v-else-if="field.type === 'array'">
+      <template v-for="(_, index) in arrayValue" :key="`${fullPath}-${index}`">
+        <AutoFormFieldset v-if="field.item!.type === 'object' || field.item!.type === 'array'" :field="field.item!"
+          :model="model" :errors="errors" :path="`${fullPath}-${index}`">
+          <template #legend>
+            <legend class="fieldset-legend w-full justify-between">
+              {{ field.label }} - {{ index + 1 }}
+              <button type="button" class="btn btn-primary btn-sm" @click="removeArrayItem(index)">删除</button>
+            </legend>
+          </template>
+        </AutoFormFieldset>
 
-      <slot name="submit" :validate="validate" :model="model" :errors="fieldErrors" :form-errors="formErrors">
-        <button type="button" class="btn btn-primary btn-block mt-4" @click="validate">校验</button>
-      </slot>
-    </fieldset>
-  </form>
+        <AutoFormField v-else :field="field.item!" :model="model" :errors="errors" :path="`${fullPath}-${index}`">
+          <template #append>
+            <button type="button" class="btn btn-primary btn-sm join-item" @click="removeArrayItem(index)">删除</button>
+          </template>
+        </AutoFormField>
+      </template>
+
+      <p v-if="fieldError" class="label text-error text-xs">{{ fieldError }}</p>
+    </template>
+  </fieldset>
 </template>
 
 <script setup lang="ts">
-import { z } from 'zod/v4'
-
-const props = defineProps<{
-  schema: z.ZodTypeAny
-}>()
-
-const { fields, defaults } = auto_form_kit(props.schema)
-const model = reactive<Record<string, unknown>>(structuredClone(defaults))
-const fieldErrors = reactive<Record<string, string[]>>({})
-const formErrors = ref<string[]>([])
-
-const clearErrors = () => {
-  for (const key of Object.keys(fieldErrors)) {
-    delete fieldErrors[key]
-  }
-
-  formErrors.value = []
-}
-
-const validate = () => {
-  clearErrors()
-
-  const payload = structuredClone(toRaw(model))
-  const result = props.schema.safeParse(payload)
-  if (result.success)
-    return {
-      valid: true,
-      data: result.data,
-    }
-
-  const nextErrors = zod_error_to_form_errors(result.error)
-  formErrors.value = nextErrors.form_errors
-
-  for (const [path, messages] of Object.entries(nextErrors.field_errors) as Array<[string, string[]]>) {
-    fieldErrors[path] = messages
-  }
-
-  return {
-    valid: false,
-    data: payload,
-  }
-}
-
-defineExpose({
-  model,
-  fieldErrors,
-  formErrors,
-  validate,
+defineOptions({
+  name: 'AutoFormFieldset',
 })
+
+const props = withDefaults(defineProps<{
+  field: form_field_config
+  model: Record<string, unknown>
+  errors: Record<string, string[]>
+  path?: string
+}>(), {
+  path: '',
+})
+
+const fullPath = computed(() => {
+  if (props.field.path !== undefined) return props.field.path
+  if (!props.field.key) return props.path
+  return props.path ? `${props.path}-${props.field.key}` : props.field.key
+})
+
+const arrayValue = computed(() => {
+  const value = get_value_at_path(props.model, fullPath.value)
+  return Array.isArray(value) ? value : []
+})
+
+const fieldError = computed(() => props.errors[fullPath.value]?.[0])
+
+const addArrayItem = () => {
+  const next = [...arrayValue.value]
+  next.push(build_initial_value(props.field.item!))
+  set_value_at_path(props.model, fullPath.value, next)
+}
+
+const removeArrayItem = (index: number) => {
+  const next = [...arrayValue.value]
+  next.splice(index, 1)
+  set_value_at_path(props.model, fullPath.value, next)
+}
 </script>

@@ -11,6 +11,7 @@ interface form_field_options {
 
 export interface form_field_config {
   key: string
+  path?: string
   type: form_field_type
   label: string
   required: boolean
@@ -24,18 +25,9 @@ export interface form_field_config {
   item?: form_field_config
 }
 
-interface auto_form_result {
-  fields: form_field_config[]
-  defaults: Record<string, unknown>
-}
-
-interface auto_form_error_result {
-  form_errors: string[]
-  field_errors: Record<string, string[]>
-}
-
-/* declare zod global meta ========================================================== */
-
+/**
+ * declare zod global meta
+ */
 declare module "zod/v4" {
   interface GlobalMeta {
     form?: {
@@ -61,21 +53,10 @@ const to_label = (value: string) => {
 }
 
 const parse_path = (path: string) => {
-  const tokens: (string | number)[] = []
-  const regex = /([^.[\]]+)|(\[(\d+)\])/g
-  let match: RegExpExecArray | null
-
-  match = regex.exec(path)
-  while (match) {
-    if (match[1]) {
-      tokens.push(match[1])
-    } else if (match[3]) {
-      tokens.push(Number(match[3]))
-    }
-    match = regex.exec(path)
-  }
-
-  return tokens
+  return path
+    .split('-')
+    .filter(Boolean)
+    .map(segment => /^\d+$/.test(segment) ? Number(segment) : segment)
 }
 
 const unwrap_schema = (schema: z.ZodTypeAny) => {
@@ -148,14 +129,20 @@ const filter_visible_field = (field: form_field_config): form_field_config | nul
   return field
 }
 
-const build_field = (key: string, schema: z.ZodTypeAny): form_field_config => {
+const build_field = (key: string, schema: z.ZodTypeAny, parent_path: string | undefined): form_field_config => {
   const { core, required } = unwrap_schema(schema)
   const parsed_default = schema.safeParse(undefined)
   const default_value = parsed_default.success ? parsed_default.data : undefined
   const meta = schema.meta()?.form ?? {}
 
+  // parent_path === undefined means we are inside an array item template; path won't be pre-computed.
+  const path: string | undefined = parent_path === undefined
+    ? undefined
+    : parent_path ? `${parent_path}-${key}` : key
+
   const base_config = {
     key,
+    path,
     label: meta.label ?? to_label(key),
     required,
     placeholder: meta.placeholder,
@@ -170,7 +157,7 @@ const build_field = (key: string, schema: z.ZodTypeAny): form_field_config => {
     return {
       ...base_config,
       type: 'object',
-      children: Object.entries(shape).map(([childKey, childSchema]) => build_field(childKey, childSchema as z.ZodTypeAny)),
+      children: Object.entries(shape).map(([childKey, childSchema]) => build_field(childKey, childSchema as z.ZodTypeAny, path)),
     }
   }
 
@@ -178,7 +165,8 @@ const build_field = (key: string, schema: z.ZodTypeAny): form_field_config => {
     return {
       ...base_config,
       type: 'array',
-      item: build_field('', core.element as unknown as z.ZodTypeAny),
+      // Array item template: pass undefined so the item and its descendants have path === undefined
+      item: build_field('', core.element as unknown as z.ZodTypeAny, undefined),
     }
   }
 
@@ -270,70 +258,19 @@ export const build_initial_value = (field: form_field_config): unknown => {
 }
 
 /**
- * Transform Zod error tree into form-consumable structure: root errors + path-mapped field errors
- */
-export const zod_error_to_form_errors = (error: z.ZodError): auto_form_error_result => {
-  const tree = z.treeifyError(error)
-  const result: auto_form_error_result = {
-    form_errors: [],
-    field_errors: {},
-  }
-
-  const collect_tree_errors = (
-    node: { errors: string[]; properties?: Record<string, any>; items?: Array<any | undefined> },
-    path: string,
-    result: auto_form_error_result,
-  ) => {
-    if (path && node.errors.length) {
-      if (!result.field_errors[path]) {
-        result.field_errors[path] = []
-      }
-      result.field_errors[path].push(...node.errors)
-    } else if (!path && node.errors.length) {
-      result.form_errors.push(...node.errors)
-    }
-
-    const append_path = (base: string, segment: string | number) => {
-      if (typeof segment === 'number') {
-        return `${base}[${segment}]`
-      }
-
-      return base ? `${base}.${segment}` : segment
-    }
-
-    for (const [key, child] of Object.entries(node.properties ?? {})) {
-      if (!child) {
-        continue
-      }
-
-      collect_tree_errors(child, append_path(path, key), result)
-    }
-
-    for (const [index, child] of (node.items ?? []).entries()) {
-      if (!child) {
-        continue
-      }
-
-      collect_tree_errors(child, append_path(path, index), result)
-    }
-  }
-
-  collect_tree_errors(tree, '', result)
-
-  return result
-}
-
-/**
  * Main entry: parse root schema shape, recursively generate field tree, filter hidden, compile defaults
  */
-export const auto_form_kit = (schema: z.ZodTypeAny): auto_form_result => {
+export const auto_form_kit = (schema: z.ZodTypeAny): {
+  fields: form_field_config[]
+  defaults: Record<string, unknown>
+} => {
   const { core } = unwrap_schema(schema)
 
   if (!(core instanceof z.ZodObject)) {
     throw new Error('auto_form_kit requires a ZodObject root schema.')
   }
 
-  const all_fields = Object.entries(core.shape).map(([key, itemSchema]) => build_field(key, itemSchema as z.ZodTypeAny))
+  const all_fields = Object.entries(core.shape).map(([key, itemSchema]) => build_field(key, itemSchema as z.ZodTypeAny, ''))
   const fields = all_fields
     .map(filter_visible_field)
     .filter((field): field is form_field_config => field !== null)
