@@ -28,12 +28,17 @@ const props = defineProps<{
   schema: z.ZodTypeAny
 }>()
 
+const { fields, defaults } = auto_form_kit(props.schema)
+const model = reactive<Record<string, unknown>>(structuredClone(defaults))
+const fieldErrors = reactive<Record<string, string[]>>({})
+const formErrors = ref<string[]>([])
+
 interface auto_form_error_result {
   form_errors: string[]
   field_errors: Record<string, string[]>
 }
 
-const zod_error_to_form_errors = (error: z.ZodError): auto_form_error_result => {
+const parse_form_error = (error: z.ZodError): auto_form_error_result => {
   const tree = z.treeifyError(error)
   const result: auto_form_error_result = {
     form_errors: [],
@@ -74,11 +79,6 @@ const zod_error_to_form_errors = (error: z.ZodError): auto_form_error_result => 
   return result
 }
 
-const { fields, defaults } = auto_form_kit(props.schema)
-const model = reactive<Record<string, unknown>>(structuredClone(defaults))
-const fieldErrors = reactive<Record<string, string[]>>({})
-const formErrors = ref<string[]>([])
-
 const clearErrors = () => {
   for (const key of Object.keys(fieldErrors)) {
     delete fieldErrors[key]
@@ -97,7 +97,7 @@ const validate = () => {
       data: result.data,
     }
 
-  const nextErrors = zod_error_to_form_errors(result.error)
+  const nextErrors = parse_form_error(result.error)
   formErrors.value = nextErrors.form_errors
 
   for (const [path, messages] of Object.entries(nextErrors.field_errors) as Array<[string, string[]]>) {
