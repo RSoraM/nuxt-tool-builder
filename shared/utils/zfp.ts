@@ -7,13 +7,14 @@ export type TamplateType =
   | 'bigint'            // 大整数输入
   | 'password'          // 密码输入
   | 'textarea'          // 多行文本输入
-  | 'template_literal'  // 模板字符串输入
   | 'checkbox'          // toggle 开关
   | 'date'              // 日期输入
   | 'select'            // 下拉选择
   | 'file'              // 文件上传
   | 'array'             // 数组类型，前端展示为可增删的列表
   | 'object'            // 对象类型，前端展示为嵌套表单
+  | 'tuple'             // 元组类型，固定长度数组
+  | 'union'             // 联合类型，前端展示为多选一
   | 'json';             // json 类型，前端展示为多行文本输入，输入内容必须是合法的 JSON 字符串
 
 /** zod 表单节点 */
@@ -21,17 +22,18 @@ export interface ZFPNode {
   label: string;
   path: string;
   /**
-   * textarea: 多行文本输入
    * text: 单行文本输入
-   * password: 密码输入
    * number: 数字输入
    * bigint: 大整数输入
+   * password: 密码输入
+   * textarea: 多行文本输入
    * checkbox: toggle 开关
    * date: 日期输入
    * select: 下拉选择
    * file: 文件上传
    * array: 数组类型，前端展示为可增删的列表
    * object: 对象类型，前端展示为嵌套表单
+   * union: 联合类型，前端展示为多选一
    * lazy: json 类型，前端展示为多行文本输入，输入内容必须是合法的 JSON 字符串
    */
   template: TamplateType;
@@ -39,6 +41,7 @@ export interface ZFPNode {
   placeholder?: string;
   autoComplete?: string;
   disabled?: boolean;
+  hidden?: boolean;
   // 用于 object 类型
   children?: {
     [key: string]: ZFPNode
@@ -329,31 +332,220 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
   /* 嵌套类型 ===================================================================== */
 
   if (schema instanceof z.ZodDiscriminatedUnion) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'union',
+      path: '',
+      template: 'union',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'union'
+    node.template = meta?.template || node.template || 'union'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.children = node.children || {}
+    model = model || {}
+
+    const options = schema._zod.def.options
+    const discriminator = schema._zod.def.discriminator
+    node.options = []
+
+    options.forEach((optionSchema: any, index: number) => {
+      const discriminatorField = optionSchema.shape?.[discriminator]
+      const discriminatorValue = discriminatorField?._zod?.def?.value ?? discriminatorField?.value ?? index
+      const optionLabel = optionSchema.meta()?.label || String(discriminatorValue) || String(index)
+      const optionPath = node!.path ? `${node!.path}[${index}]` : `[${index}]`
+
+      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, model[index])
+      optionNode!.label = optionLabel
+      optionNode!.path = optionPath
+
+      // Hide the discriminator field from children (it's only used for typing/discrimination)
+      if (optionNode!.children && discriminator in optionNode!.children) {
+        optionNode!.children[discriminator]!.hidden = true
+      }
+
+      // Recursively hide discriminator in nested union options
+      function hideDiscriminatorInNestedUnions(n: any, disc: string) {
+        if (!n?.children) return
+        // For union nodes, the children are the options keyed by index
+        // Each option may be an object containing the discriminator field
+        Object.values(n.children).forEach((child: any) => {
+          // Hide discriminator if present in direct children of option
+          if (child?.children && disc in child.children) {
+            child.children[disc]!.hidden = true
+          }
+          // Recurse into any nested union
+          if (child?.template === 'union') {
+            hideDiscriminatorInNestedUnions(child, disc)
+          }
+        })
+      }
+      hideDiscriminatorInNestedUnions(optionNode, discriminator)
+
+      node!.children![String(index)] = optionNode!
+      node!.options!.push({ label: optionLabel, value: discriminatorValue ?? index })
+      model[index] = optionModel
+    })
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodUnion) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'union',
+      path: '',
+      template: 'union',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'union'
+    node.template = meta?.template || node.template || 'union'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.children = node.children || {}
+    node.options = []
+    model = model || {}
+
+    const options = schema._zod.def.options
+    options.forEach((optionSchema: any, index: number) => {
+      const optionLabel = optionSchema.meta()?.label || String(index)
+      const optionPath = node!.path ? `${node!.path}[${index}]` : `[${index}]`
+
+      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, model[index])
+      optionNode!.label = optionLabel
+      optionNode!.path = optionPath
+
+      node!.children![String(index)] = optionNode!
+      node!.options!.push({ label: optionLabel, value: index })
+      model[index] = optionModel
+    })
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodIntersection) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'intersection',
+      path: '',
+      template: 'object',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'intersection'
+    node.template = meta?.template || node.template || 'object'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.children = node.children || {}
+    model = model || {}
+
+    const leftSchema = schema._zod.def.left
+    const rightSchema = schema._zod.def.right
+
+    const { node: leftNode, model: leftModel } = parse_schema(leftSchema, model)
+    Object.assign(node!.children, leftNode!.children || {})
+    Object.assign(model, leftModel || {})
+
+    const { node: rightNode, model: rightModel } = parse_schema(rightSchema, model)
+    Object.assign(node!.children, rightNode!.children || {})
+    Object.assign(model, rightModel || {})
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodTuple) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'tuple',
+      path: '',
+      template: 'tuple',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'tuple'
+    node.template = meta?.template || node.template || 'tuple'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.children = node.children || {}
+    model = model || []
+
+    const items = schema._zod.def.items
+    items.forEach((itemSchema: any, index: number) => {
+      const key = String(index)
+      const { node: itemNode, model: itemModel } = parse_schema(itemSchema, model[index])
+      itemNode!.label = itemSchema.meta()?.label || key
+      itemNode!.path = node!.path ? `${node!.path}[${key}]` : `[${key}]`
+      node!.children![key] = itemNode!
+      model[index] = itemModel
+    })
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodRecord) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'record',
+      path: '',
+      template: 'object',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'record'
+    node.template = meta?.template || node.template || 'object'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.children = node.children || {}
+    model = model || {}
+
+    const valueSchema = schema._zod.def.valueType
+
+    const { node: valueNode, model: valueModel } = parse_schema(valueSchema, model['__key__'])
+    valueNode!.label = 'value'
+    valueNode!.path = node!.path ? `${node!.path}[key]` : '[key]'
+
+    node!.children!['__record__'] = valueNode!
+    model.__record__ = valueModel
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodSet) {
-    // TODO
+    const meta = schema.meta()
+    node = node || {
+      label: 'set',
+      path: '',
+      template: 'array',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'set'
+    node.template = meta?.template || node.template || 'array'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.element = node.element || undefined
+    model = model || []
+
+    const valueSchema = schema._zod.def.valueType
+
+    const { node: elementNode, model: elementModel } = parse_schema(valueSchema, model[0])
+    elementNode!.label = 'item'
+    elementNode!.path = node!.path ? `${node!.path}[]` : '[]'
+    elementNode!.default = elementModel
+
+    node!.element = elementNode!
+    model = [elementModel]
+
+    return { node, model }
   }
 
   if (schema instanceof z.ZodTemplateLiteral) {
-    // TODO: 解析模板字符串类型，生成对应的输入组件
+    const meta = schema.meta()
+    node = node || {
+      label: 'template_literal',
+      path: '',
+      template: 'text',
+      required: false,
+    }
+    node.label = meta?.label || node.label || 'template_literal'
+    node.template = meta?.template || node.template || 'text'
+    node.placeholder = meta?.placeholder || node.placeholder
+    node.autoComplete = meta?.autoComplete || node.autoComplete
+    node.default = schema.def.parts.map((_, i) => typeof _ === 'string' ? _ : `{${i}}`).join('')
+
+    model = model || node.default
+    return { node, model }
   }
 
   if (schema instanceof z.ZodObject) {

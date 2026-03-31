@@ -4,75 +4,72 @@
       <div class="card-body space-y-4">
         <h1 class="card-title text-2xl">Zod 动态表单示例</h1>
         <p class="text-sm text-base-content/70">
-          该页面由 schema 自动生成字段，支持嵌套对象和数组，提交时执行前端与后端双重校验。
+          该页面由 schema 自动生成字段，支持嵌套对象、数组、联合类型等复杂结构。
         </p>
 
-        <AutoForm :node="node" v-model="data">
-          <button type="button" class="btn btn-primary mt-4" :disabled="!data" @click="handleSubmit()">
-            提交示例
+        <!-- Schema selector tabs -->
+        <div role="tablist" class="tabs tabs-border">
+          <button v-for="(item, index) in schemaList" :key="item.name" type="button" role="tab" class="tab"
+            :class="{ 'tab-active': activeSchema === index }" @click="activeSchema = index">
+            {{ item.label }}
+          </button>
+        </div>
+
+        <!-- Active schema form -->
+        <AutoForm v-if="currentSchema" :node="currentSchema.node" v-model="currentSchema.data">
+          <button type="button" class="btn btn-primary mt-4" @click="handleSubmit">
+            提交
           </button>
         </AutoForm>
+
       </div>
     </section>
 
-    <pre>{{ data }}</pre>
-    <pre>{{ node }}</pre>
-
-    <section v-if="Object.keys(serverErrors).length" class="card bg-error/10 border border-error/30">
-      <div class="card-body">
-        <h2 class="font-semibold">后端字段错误</h2>
-        <ul class="list-disc pl-5 text-sm">
-          <li v-for="(msg, path) in serverErrors" :key="path">{{ path }}: {{ msg }}</li>
-        </ul>
-      </div>
-    </section>
-
+    <!-- Schema info -->
     <section class="card bg-base-100 shadow">
       <div class="card-body">
-        <h2 class="font-semibold">提交结果</h2>
-        <p class="text-sm" :class="serverMessage === '提交成功' ? 'text-success' : 'text-error'">{{ serverMessage }}</p>
-        <pre v-if="submitResult" class="mockup-code whitespace-pre-wrap text-xs">{{ submitResult }}</pre>
+        <h2 class="font-semibold">{{ currentSchema?.label }} - Node 结构</h2>
+        <details class="collapse bg-base-200">
+          <summary class="collapse-title">查看 Node</summary>
+          <pre
+            class="collapse-content text-xs overflow-auto max-h-96">{{ JSON.stringify(currentSchema?.node, null, 2) }}</pre>
+        </details>
+        <details class="collapse bg-base-200 mt-2">
+          <summary class="collapse-title">查看 Model</summary>
+          <pre
+            class="collapse-content text-xs overflow-auto max-h-96">{{ JSON.stringify(currentSchema?.data, null, 2) }}</pre>
+        </details>
       </div>
     </section>
   </main>
 </template>
 
 <script setup lang="ts">
-const serverErrors = ref<Record<string, string>>({})
-const serverMessage = ref('')
-const submitResult = ref<Record<string, unknown> | null>(null)
+const schemaList = [
+  { name: 'userProfile', label: '用户资料', schema: userProfile },
+  { name: 'tagsForm', label: '标签列表', schema: tagsForm },
+  { name: 'shippingAddress', label: '收货地址', schema: shippingAddress },
+  { name: 'coordinateForm', label: '坐标', schema: coordinateForm },
+  { name: 'optionalDemo', label: '可选字段', schema: optionalDemo },
+  { name: 'paymentForm', label: '支付方式', schema: paymentForm },
+  { name: 'statusSchema', label: '状态表单', schema: statusSchema },
+  { name: 'orderForm', label: '完整订单', schema: orderForm },
+]
 
-const clearServerErrors = () => {
-  serverErrors.value = {}
-  serverMessage.value = ''
-}
+const activeSchema = ref(0)
 
-const { node, model } = zfp(shippingAddress)
-const data = reactive(model)
+const schemas = computed(() => schemaList.map((item) => {
+  const { node, model } = zfp(item.schema)
+  return {
+    ...item,
+    node,
+    data: reactive(model),
+  }
+}))
 
-console.log(node)
-console.log(model)
+const currentSchema = computed(() => schemas.value[activeSchema.value])
 
-const handleSubmit = async () => {
-  clearServerErrors()
-
-  console.log(orderForm.parse(data))
-
-  // try {
-  //   const response = await $fetch('/api/example', {
-  //     method: 'POST',
-  //     body: data,
-  //   })
-
-  //   submitResult.value = response as Record<string, unknown>
-  //   serverMessage.value = '提交成功'
-  // } catch (error: any) {
-  //   submitResult.value = null
-  //   const data = error?.data
-  //   if (data?.fieldErrors && typeof data.fieldErrors === 'object') {
-  //     serverErrors.value = data.fieldErrors
-  //   }
-  //   serverMessage.value = data?.message ?? '提交失败'
-  // }
+const handleSubmit = () => {
+  console.log('Submit:', currentSchema.value?.data)
 }
 </script>

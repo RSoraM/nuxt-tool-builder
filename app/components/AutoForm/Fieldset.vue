@@ -5,7 +5,7 @@
       <slot name="legend_action"></slot>
     </legend>
 
-    <AutoFormField v-for="key in Object.keys(children)" :key="key" :node="children[key]!" v-model="model[key]" />
+    <AutoFormField v-for="key in visibleChildren" :key="key" :node="children[key]!" v-model="model[key]" />
 
     <slot name="submit" />
   </fieldset>
@@ -16,4 +16,5 @@ const model = defineModel<any>()
 const props = defineProps<{ node: ZFPNode }>()
 
 const children = computed(() => props.node.children || {})
+const visibleChildren = computed(() => Object.keys(children.value).filter(key => !children.value[key]?.hidden))
 </script>

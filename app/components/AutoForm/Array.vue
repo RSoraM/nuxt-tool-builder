@@ -28,7 +28,7 @@
       <template v-else>
         <AutoFormField v-for="(value, index) in model as any[]" :key="index" :node="element" v-model="model[index]">
           <template #field_action>
-            <button class="btn btn-error" @click="remove(index)">删除</button>
+            <button class="btn btn-error join-item" @click="remove(index)">删除</button>
           </template>
         </AutoFormField>
       </template>
