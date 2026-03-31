@@ -37,7 +37,7 @@
         <details class="collapse bg-base-200 mt-2">
           <summary class="collapse-title">查看 Model</summary>
           <pre
-            class="collapse-content text-xs overflow-auto max-h-96">{{ JSON.stringify(currentSchema?.data, null, 2) }}</pre>
+            class="collapse-content text-xs overflow-auto max-h-96">{{ JSON.stringify(currentSchema?.data, bigintReplacer, 2) }}</pre>
         </details>
       </div>
     </section>
@@ -54,6 +54,15 @@ const schemaList = [
   { name: 'paymentForm', label: '支付方式', schema: paymentForm },
   { name: 'statusSchema', label: '状态表单', schema: statusSchema },
   { name: 'orderForm', label: '完整订单', schema: orderForm },
+  { name: 'bigintForm', label: 'BigInt表单', schema: bigintForm },
+  { name: 'fileForm', label: '文件上传', schema: fileForm },
+  { name: 'setForm', label: 'Set表单', schema: setForm },
+  { name: 'recordForm', label: 'Record表单', schema: recordForm },
+  { name: 'intersectionForm', label: '交叉类型', schema: intersectionForm },
+  { name: 'templateLiteralForm', label: '模板字面量', schema: templateLiteralForm },
+  { name: 'nonOptionalForm', label: 'NonOptional', schema: nonOptionalForm },
+  { name: 'genericUnionForm', label: '通用联合', schema: genericUnionForm },
+  { name: 'projectConfigForm', label: '项目配置', schema: projectConfigForm },
 ]
 
 const activeSchema = ref(0)
@@ -70,6 +79,13 @@ const schemas = computed(() => schemaList.map((item) => {
 const currentSchema = computed(() => schemas.value[activeSchema.value])
 
 const handleSubmit = () => {
-  console.log('Submit:', currentSchema.value?.data)
+  if (!currentSchema.value) return
+  const { schema, data } = currentSchema.value
+  console.log(schema.safeParse(data))
+}
+
+const bigintReplacer = (_key: string, value: any) => {
+  if (typeof value === 'bigint') return value.toString()
+  return value
 }
 </script>

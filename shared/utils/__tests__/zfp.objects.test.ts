@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { zfp } from '../zfp'
-import { userProfile, shippingAddress, orderForm } from '../example'
+import { userProfile, shippingAddress, orderForm, bigintForm, fileForm, projectConfigForm, templateLiteralForm } from '../example'
 
 describe('zfp - object schemas', () => {
   describe('shippingAddress', () => {
@@ -148,6 +148,98 @@ describe('zfp - object schemas', () => {
       // Note: current implementation doesn't build full paths for deeply nested fields
       expect(result.node.children!.customer.children!.name.path).toBe('name')
       expect(result.node.children!.shipping.children!.recipient.path).toBe('recipient')
+    })
+  })
+
+  describe('bigintForm', () => {
+    const result = zfp(bigintForm)
+
+    it('should parse id as bigint template', () => {
+      const id = result.node.children!.id
+      expect(id.template).toBe('bigint')
+      expect(id.label).toBe('ID')
+      expect(id.placeholder).toBe('请输入ID')
+    })
+
+    it('should parse timestamp as date template', () => {
+      const timestamp = result.node.children!.timestamp
+      expect(timestamp.template).toBe('date')
+      expect(timestamp.label).toBe('时间戳')
+    })
+
+    it('should have bigint model default 0n', () => {
+      expect(result.model.id).toBe(0n)
+    })
+  })
+
+  describe('fileForm', () => {
+    const result = zfp(fileForm)
+
+    it('should parse avatar as file template', () => {
+      const avatar = result.node.children!.avatar
+      expect(avatar.template).toBe('file')
+      expect(avatar.label).toBe('头像')
+    })
+
+    it('should parse document as file template', () => {
+      const document = result.node.children!.document
+      expect(document.template).toBe('file')
+      expect(document.label).toBe('文档')
+    })
+
+    it('should have null model defaults', () => {
+      expect(result.model.avatar).toBe(null)
+      expect(result.model.document).toBe(null)
+    })
+  })
+
+  describe('projectConfigForm - complex nested', () => {
+    const result = zfp(projectConfigForm)
+
+    it('should parse nested project object', () => {
+      const project = result.node.children!.project
+      expect(project.template).toBe('object')
+      expect(project.children!.name.template).toBe('text')
+      expect(project.children!.version.template).toBe('text')
+      expect(project.children!.settings.template).toBe('object')
+    })
+
+    it('should parse settings with boolean and number fields', () => {
+      const settings = result.node.children!.project.children!.settings
+      expect(settings.children!.debug.template).toBe('checkbox')
+      expect(settings.children!.maxRetries.template).toBe('number')
+      expect(settings.children!.maxRetries.default).toBe(3)
+    })
+
+    it('should parse environments as record', () => {
+      const environments = result.node.children!.environments
+      expect(environments.template).toBe('object')
+      expect(environments.label).toBe('环境配置')
+    })
+
+    it('should parse hooks as array of objects', () => {
+      const hooks = result.node.children!.hooks
+      expect(hooks.template).toBe('array')
+      expect(hooks.element!.template).toBe('object')
+      expect(hooks.element!.children!.event.template).toBe('select')
+      expect(hooks.element!.children!.command.template).toBe('text')
+      expect(hooks.element!.children!.enabled.template).toBe('checkbox')
+    })
+  })
+
+  describe('templateLiteralForm', () => {
+    const result = zfp(templateLiteralForm)
+
+    it('should parse phone as text template', () => {
+      const phone = result.node.children!.phone
+      expect(phone.template).toBe('text')
+      expect(phone.label).toBe('电话号码')
+      expect(phone.placeholder).toBe('请输入 xxx-xxxx')
+    })
+
+    it('should build default from template parts', () => {
+      const phone = result.node.children!.phone
+      expect(phone.default).toBe('{0}-{2}')
     })
   })
 })

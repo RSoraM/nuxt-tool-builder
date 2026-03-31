@@ -191,3 +191,92 @@ export const statusSchema = z.object({
     ]).meta({ label: "失败" }),
   ]).meta({ label: "状态表单" })
 });
+
+// ============================================================
+// 示例 10: BigInt 和日期
+// ============================================================
+export const bigintForm = z.object({
+  id: z.bigint().meta({ label: "ID", placeholder: "请输入ID" }),
+  timestamp: z.date().meta({ label: "时间戳", placeholder: "请选择时间" }),
+}).meta({ label: "BigInt表单" });
+
+// ============================================================
+// 示例 11: 文件上传
+// ============================================================
+export const fileForm = z.object({
+  avatar: z.file().meta({ label: "头像", placeholder: "请上传头像" }),
+  document: z.file().meta({ label: "文档", placeholder: "请上传文档" }),
+}).meta({ label: "文件上传" });
+
+// ============================================================
+// 示例 12: Set 类型 (映射为数组)
+// ============================================================
+export const setForm = z.object({
+  uniqueTags: z.set(z.string()).meta({ label: "唯一标签", placeholder: "请输入标签" }),
+}).meta({ label: "Set表单" });
+
+// ============================================================
+// 示例 13: Record 类型
+// ============================================================
+export const recordForm = z.object({
+  metadata: z.record(z.string(), z.string()).meta({ label: "元数据", placeholder: "请输入元数据" }),
+}).meta({ label: "Record表单" });
+
+// ============================================================
+// 示例 14: Intersection 交叉类型
+// ============================================================
+export const intersectionForm = z.object({
+  combined: z.object({
+    name: z.string().meta({ label: "名称" }),
+  }).and(z.object({
+    age: z.number().meta({ label: "年龄" }),
+  })).meta({ label: "组合信息" }),
+}).meta({ label: "交叉类型" });
+
+// ============================================================
+// 示例 15: TemplateLiteral 模板字面量
+// ============================================================
+export const templateLiteralForm = z.object({
+  phone: z.templateLiteral([z.string().length(3), '-', z.string().length(4)]).meta({ label: "电话号码", placeholder: "请输入 xxx-xxxx" }),
+}).meta({ label: "模板字面量" });
+
+// ============================================================
+// 示例 16: ZodNonOptional
+// ============================================================
+export const nonOptionalForm = z.object({
+  required: z.string().nonoptional().meta({ label: "必填字符串", placeholder: "请输入" }),
+}).meta({ label: "NonOptional表单" });
+
+// ============================================================
+// 示例 17: 通用 Union (非 discriminated)
+// ============================================================
+export const genericUnionForm = z.object({
+  value: z.union([
+    z.object({ type: z.literal('string'), content: z.string() }),
+    z.object({ type: z.literal('number'), content: z.number() }),
+    z.object({ type: z.literal('boolean'), content: z.boolean() }),
+  ]).meta({ label: "通用联合" }),
+}).meta({ label: "通用联合表单" });
+
+// ============================================================
+// 示例 18: 复杂嵌套 - 完整项目配置
+// ============================================================
+export const projectConfigForm = z.object({
+  project: z.object({
+    name: z.string().meta({ label: "项目名称", placeholder: "请输入项目名称" }),
+    version: z.string().regex(/^\d+\.\d+\.\d+$/).meta({ label: "版本号", placeholder: "1.0.0" }),
+    settings: z.object({
+      debug: z.boolean().default(false).meta({ label: "调试模式" }),
+      maxRetries: z.number().min(0).max(10).default(3).meta({ label: "最大重试次数" }),
+    }).meta({ label: "设置" }),
+  }).meta({ label: "项目信息" }),
+  environments: z.record(z.string(), z.object({
+    url: z.string().meta({ label: "URL" }),
+    apiKey: z.string().meta({ label: "API Key", template: 'password' }),
+  })).meta({ label: "环境配置" }),
+  hooks: z.array(z.object({
+    event: z.enum(['pre-build', 'post-build', 'pre-deploy', 'post-deploy']).meta({ label: "事件" }),
+    command: z.string().meta({ label: "命令", placeholder: "请输入命令" }),
+    enabled: z.boolean().default(true).meta({ label: "启用" }),
+  })).meta({ label: "钩子", placeholder: "请配置钩子" }),
+}).meta({ label: "项目配置" });
