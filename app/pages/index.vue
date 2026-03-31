@@ -47,8 +47,11 @@ const clearServerErrors = () => {
   serverMessage.value = ''
 }
 
-const { node, model } = zfp(orderForm)
+const { node, model } = zfp(shippingAddress)
 const data = reactive(model)
+
+console.log(node)
+console.log(model)
 
 const handleSubmit = async () => {
   clearServerErrors()

@@ -54,7 +54,7 @@ export const shippingAddress = z.object({
   ).meta({ label: "地址列表", placeholder: "请输入地址列表" }),
   isDefault: z.boolean().default(false)
     .meta({ label: "设为默认", placeholder: "是否设为默认" }),
-});
+}).meta({ label: '收货地址' });
 
 // ============================================================
 // 示例 4: 判别联合 — 支付方式
