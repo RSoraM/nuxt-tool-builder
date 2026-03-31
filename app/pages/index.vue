@@ -7,14 +7,16 @@
           该页面由 schema 自动生成字段，支持嵌套对象和数组，提交时执行前端与后端双重校验。
         </p>
 
-        <AutoForm :schema="example_form.schema">
-          <template #submit="{ data }">
-            <button type="button" class="btn btn-primary mt-4" :disabled="!data"
-              @click="handleSubmit(data)">提交示例</button>
-          </template>
+        <AutoForm :node="node" v-model="data">
+          <button type="button" class="btn btn-primary mt-4" :disabled="!data" @click="handleSubmit()">
+            提交示例
+          </button>
         </AutoForm>
       </div>
     </section>
+
+    <pre>{{ data }}</pre>
+    <pre>{{ node }}</pre>
 
     <section v-if="Object.keys(serverErrors).length" class="card bg-error/10 border border-error/30">
       <div class="card-body">
@@ -36,8 +38,6 @@
 </template>
 
 <script setup lang="ts">
-const { example_form } = use_example_module()
-
 const serverErrors = ref<Record<string, string>>({})
 const serverMessage = ref('')
 const submitResult = ref<Record<string, unknown> | null>(null)
@@ -47,26 +47,29 @@ const clearServerErrors = () => {
   serverMessage.value = ''
 }
 
-const handleSubmit = async (data: Record<string, unknown> | undefined) => {
+const { node, model } = zfp(orderForm)
+const data = reactive(model)
+
+const handleSubmit = async () => {
   clearServerErrors()
 
-  if (!data) return
+  console.log(orderForm.parse(data))
 
-  try {
-    const response = await $fetch('/api/example', {
-      method: 'POST',
-      body: data,
-    })
+  // try {
+  //   const response = await $fetch('/api/example', {
+  //     method: 'POST',
+  //     body: data,
+  //   })
 
-    submitResult.value = response as Record<string, unknown>
-    serverMessage.value = '提交成功'
-  } catch (error: any) {
-    submitResult.value = null
-    const data = error?.data
-    if (data?.fieldErrors && typeof data.fieldErrors === 'object') {
-      serverErrors.value = data.fieldErrors
-    }
-    serverMessage.value = data?.message ?? '提交失败'
-  }
+  //   submitResult.value = response as Record<string, unknown>
+  //   serverMessage.value = '提交成功'
+  // } catch (error: any) {
+  //   submitResult.value = null
+  //   const data = error?.data
+  //   if (data?.fieldErrors && typeof data.fieldErrors === 'object') {
+  //     serverErrors.value = data.fieldErrors
+  //   }
+  //   serverMessage.value = data?.message ?? '提交失败'
+  // }
 }
 </script>

@@ -7,6 +7,13 @@ export default defineNuxtConfig({
   devServer: {
     port: 30000
   },
+  nitro: {
+    esbuild: {
+      options: {
+        target: 'esnext'
+      }
+    }
+  },
 
   vite: {
     plugins: [tailwindcss()]

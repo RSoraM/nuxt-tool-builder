@@ -1,75 +1,111 @@
 <template>
-  <template v-if="field.type === 'checkbox'">
-    <label class="label items-center justify-between">
-      <span class="flex gap-2 items-center">
-        {{ field.label }}
-        <span v-if="field.required" class="badge badge-primary badge-xs">required</span>
-      </span>
+  <template v-if="node.template === 'text'">
+    <label class="label">
+      <span class="label-text">{{ node.label }}</span>
+    </label>
+    <div v-if="$slots.field_action" class="join">
+      <input type="text" class="input input-bordered w-full join-item" :placeholder="node.placeholder"
+        :autocomplete="node.autoComplete" :disabled="node.disabled" v-model="model" />
+      <slot name="field_action"></slot>
+    </div>
+    <input v-else type="text" class="input input-bordered w-full" :placeholder="node.placeholder"
+      :autocomplete="node.autoComplete" :disabled="node.disabled" v-model="model" />
+  </template>
 
-      <div class="flex gap-2 items-center">
-        <slot name="prefix"></slot>
-        <input type="checkbox" class="toggle" :class="fieldError ? 'toggle-error' : ''"
-          :autocomplete="field.autocomplete ?? 'off'" v-model="scalarValue">
-        <slot name="append"></slot>
+  <template v-else-if="node.template === 'password'">
+    <label class="label">
+      <span class="label-text">{{ node.label }}</span>
+    </label>
+    <div v-if="$slots.field_action" class="join">
+      <input type="password" class="input input-bordered w-full join-item" :placeholder="node.placeholder"
+        :autocomplete="node.autoComplete" :disabled="node.disabled" v-model="model" />
+      <slot name="field_action"></slot>
+    </div>
+    <input v-else type="password" class="input input-bordered w-full" :placeholder="node.placeholder"
+      :autocomplete="node.autoComplete" :disabled="node.disabled" v-model="model" />
+  </template>
+
+  <template v-else-if="node.template === 'json'">
+    <label class="label">
+      <span class="label-text">{{ node.label }}</span>
+    </label>
+    <div v-if="$slots.field_action" class="join">
+      <textarea class="textarea w-full join-item" :placeholder="node.placeholder" :autocomplete="node.autoComplete"
+        :disabled="node.disabled" v-model="model"></textarea>
+      <slot name="field_action"></slot>
+    </div>
+    <textarea v-else class="textarea w-full" :placeholder="node.placeholder" :autocomplete="node.autoComplete"
+      :disabled="node.disabled" v-model="model"></textarea>
+  </template>
+
+  <template v-else-if="node.template === 'number'">
+    <label class="label">
+      <span class="label-text">{{ node.label }}</span>
+    </label>
+    <div v-if="$slots.field_action" class="join">
+      <input type="number" class="input input-bordered w-full join-item" :placeholder="node.placeholder"
+        :autocomplete="node.autoComplete" :disabled="node.disabled" v-model.number="model" />
+      <slot name="field_action"></slot>
+    </div>
+    <input v-else type="number" class="input input-bordered w-full" :placeholder="node.placeholder"
+      :autocomplete="node.autoComplete" :disabled="node.disabled" v-model.number="model" />
+  </template>
+
+  <template v-else-if="node.template === 'select'">
+    <label class="label">
+      <span class="label-text">{{ node.label }}</span>
+    </label>
+    <div v-if="$slots.field_action" class="join">
+      <select class="select select-bordered w-full join-item" :disabled="node.disabled" v-model="model">
+        <option v-for="option in node.options || []" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+      <slot name="field_action"></slot>
+    </div>
+    <select v-else class="select select-bordered w-full" :disabled="node.disabled" v-model="model">
+      <option v-for="option in node.options || []" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
+    </select>
+  </template>
+
+  <template v-else-if="node.template === 'checkbox'">
+    <label class="cursor-pointer label justify-between">
+      <span class="label-text">{{ node.label }}</span>
+      <div v-if="$slots.field_action" class="flex gap-2 items-center">
+        <input type="checkbox" class="toggle" :disabled="node.disabled" v-model="model" />
+        <slot name="field_action"></slot>
       </div>
+      <input v-else type="checkbox" class="toggle" :disabled="node.disabled" v-model="model" />
     </label>
   </template>
 
-  <template v-else>
-    <span class="label">
-      {{ field.label }}
-      <span v-if="field.required" class="badge badge-primary badge-xs">required</span>
-    </span>
-
-    <div class="join">
-      <slot name="prefix"></slot>
-
-      <select v-if="field.type === 'select'" class="select select-bordered w-full join-item"
-        :class="fieldError ? 'select-error' : ''" :placeholder="field.placeholder"
-        :autocomplete="field.autocomplete ?? 'off'" v-model="scalarValue">
-        <option value="" disabled>请选择</option>
-        <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </select>
-
-      <textarea v-else-if="field.type === 'textarea'" class="textarea textarea-bordered w-full join-item"
-        :class="fieldError ? 'textarea-error' : ''" :placeholder="field.placeholder"
-        :autocomplete="field.autocomplete ?? 'off'" v-model="scalarValue" />
-
-      <input v-else-if="field.type === 'number'" type="number" class="input input-bordered w-full join-item"
-        :class="fieldError ? 'input-error' : ''" :placeholder="field.placeholder"
-        :autocomplete="field.autocomplete ?? 'off'" v-model="scalarValue">
-
-      <input v-else :type="field.type" class="input input-bordered w-full join-item"
-        :class="fieldError ? 'input-error' : ''" :placeholder="field.placeholder"
-        :autocomplete="field.autocomplete ?? 'off'" v-model="scalarValue">
-
-      <slot name="append"></slot>
-    </div>
+  <template v-else-if="node.template === 'object'">
+    <AutoFormFieldset :node="node" v-model="model">
+      <template #legend_action>
+        <slot name="field_action" />
+      </template>
+    </AutoFormFieldset>
   </template>
 
-  <p v-if="field.description" class="label text-xs text-base-content/60">{{ field.description }}</p>
-  <p v-if="fieldError" class="label text-error text-xs">{{ fieldError }}</p>
+  <template v-else-if="node.template === 'array'">
+    <AutoFormArray :node="node" v-model="model">
+      <template #legend_action>
+        <slot name="field_action" />
+      </template>
+    </AutoFormArray>
+  </template>
+
+  <template v-else>
+    <div>Unsupported template: {{ node.template }}</div>
+  </template>
+
 </template>
 
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  field: form_field_config
-  parent: any
-  nodeKey: string | number
-  errors: Record<string, string[]>
-  path?: string
-}>(), {
-  path: '',
-})
+const model = defineModel<any>()
+const props = defineProps<{ node: ZFPNode }>()
 
-const fullPath = computed(() => props.path ?? '')
-
-const scalarValue = computed({
-  get: () => props.parent?.[props.nodeKey],
-  set: (value: unknown) => {
-    props.parent[props.nodeKey] = value
-  },
-})
-
-const fieldError = computed(() => props.errors[fullPath.value]?.[0])
+useSlots()
 </script>
