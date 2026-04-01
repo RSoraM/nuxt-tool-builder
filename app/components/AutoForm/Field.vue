@@ -1,5 +1,5 @@
 <template v-if="!node.hidden">
-  <component :is="fieldComponent" :node="node" v-model="model">
+  <component :is="fieldComponent" :node="node" :errors="errors" v-model="model">
     <template #field_action>
       <slot name="field_action" />
     </template>
@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 const model = defineModel<any>()
-const props = defineProps<{ node: ZFPNode }>()
+const props = defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 
 const componentMap = {
   text: resolveComponent('AutoFormFieldText'),

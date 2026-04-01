@@ -18,6 +18,13 @@ export type TemplateType =
   | 'record'            // Record 类型，前端展示为可增删的 key-value 列表
   | 'json';             // json 类型，前端展示为多行文本输入，输入内容必须是合法的 JSON 字符串
 
+/** treeifyError 返回的错误树节点 */
+export interface ErrorTree {
+  errors: string[];
+  properties?: Record<string, ErrorTree>;
+  items?: ErrorTree[];
+}
+
 /** zod 表单节点 */
 export interface ZFPNode {
   label: string;
@@ -399,6 +406,50 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode, path: string = ''
 export const zfp = (schema: z.ZodObject) => {
   const { node, model } = parse_schema(schema, {})
   return { node, model: structuredClone(model) }
+}
+
+/** 根据 ZFPNode 树将表单 model 转换回 Zod 可接受的数据（array→Set 等） */
+export const convertModel = (node: ZFPNode, data: any): any => {
+  if (data == null) return data
+
+  if (node.template === 'object' && node.children) {
+    const result: Record<string, any> = {}
+    for (const key of Object.keys(node.children)) {
+      result[key] = convertModel(node.children[key]!, data[key])
+    }
+    return result
+  }
+
+  if (node.template === 'array' && node.element) {
+    if (node.originalType === 'set') {
+      return new Set((data as any[]).map(item => convertModel(node.element!, item)))
+    }
+    return (data as any[]).map(item => convertModel(node.element!, item))
+  }
+
+  if (node.template === 'record' && node.element) {
+    const result: Record<string, any> = {}
+    for (const key of Object.keys(data || {})) {
+      result[key] = convertModel(node.element!, data[key])
+    }
+    return result
+  }
+
+  if (node.template === 'tuple' && node.children) {
+    const keys = Object.keys(node.children).sort((a, b) => Number(a) - Number(b))
+    return keys.map(key => convertModel(node.children![key]!, data[Number(key)]))
+  }
+
+  if (node.template === 'union' && node.children) {
+    for (const key of Object.keys(node.children)) {
+      const child = node.children[key]!
+      if (child.template === 'object' || child.template === 'array' || child.template === 'tuple' || child.template === 'record') {
+        return convertModel(child, data)
+      }
+    }
+  }
+
+  return data
 }
 
 /**

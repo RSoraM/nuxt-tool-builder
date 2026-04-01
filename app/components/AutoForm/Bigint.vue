@@ -7,11 +7,12 @@
       :disabled="node.disabled" v-model="stringValue" />
     <slot name="field_action"></slot>
   </div>
+  <p v-for="msg in errors?.errors" :key="msg" class="text-error text-sm">{{ msg }}</p>
 </template>
 
 <script setup lang="ts">
 const model = defineModel<any>()
-const props = defineProps<{ node: ZFPNode }>()
+const props = defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 
 const stringValue = ref('')
 

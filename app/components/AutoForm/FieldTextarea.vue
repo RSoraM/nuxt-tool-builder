@@ -9,9 +9,10 @@
   </div>
   <textarea v-else class="textarea textarea-bordered w-full" :placeholder="node.placeholder" :disabled="node.disabled"
     v-model="model"></textarea>
+  <p v-for="msg in errors?.errors" :key="msg" class="text-error text-sm">{{ msg }}</p>
 </template>
 
 <script setup lang="ts">
 const model = defineModel<any>()
-defineProps<{ node: ZFPNode }>()
+defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 </script>

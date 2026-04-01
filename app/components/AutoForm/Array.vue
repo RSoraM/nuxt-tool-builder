@@ -8,9 +8,12 @@
       </button>
     </legend>
 
+    <p v-for="msg in errors?.errors" :key="msg" class="text-error text-sm">{{ msg }}</p>
+
     <template v-if="element">
       <template v-if="element.template === 'object'">
-        <AutoFormFieldset v-for="(value, index) in model as any[]" :key="index" :node="element" v-model="model[index]">
+        <AutoFormFieldset v-for="(value, index) in model as any[]" :key="index" :node="element"
+          :errors="errors?.items?.[index]" v-model="model[index]">
           <template #legend_action>
             <button class="btn btn-error btn-sm" @click="remove(index)">删除</button>
           </template>
@@ -18,7 +21,8 @@
       </template>
 
       <template v-else-if="element.template === 'array'">
-        <AutoFormArray v-for="(value, index) in model as any[]" :key="index" :node="element" v-model="model[index]">
+        <AutoFormArray v-for="(value, index) in model as any[]" :key="index" :node="element"
+          :errors="errors?.items?.[index]" v-model="model[index]">
           <template #legend_action>
             <button class="btn btn-error btn-sm" @click="remove(index)">删除</button>
           </template>
@@ -26,7 +30,8 @@
       </template>
 
       <template v-else>
-        <AutoFormField v-for="(value, index) in model as any[]" :key="index" :node="element" v-model="model[index]">
+        <AutoFormField v-for="(value, index) in model as any[]" :key="index" :node="element"
+          :errors="errors?.items?.[index]" v-model="model[index]">
           <template #field_action>
             <button class="btn btn-error join-item" @click="remove(index)">删除</button>
           </template>
@@ -43,7 +48,7 @@
 
 <script setup lang="ts">
 const model = defineModel<any>()
-const props = defineProps<{ node: ZFPNode }>()
+const props = defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 
 const element = computed(() => props.node.element)
 

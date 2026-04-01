@@ -8,12 +8,14 @@
       </button>
     </legend>
 
+    <p v-for="msg in errors?.errors" :key="msg" class="text-error text-sm">{{ msg }}</p>
+
     <template v-if="element">
       <div v-for="key in modelKeys" :key="key" class="flex gap-2 items-start mb-2">
         <input type="text" class="input input-bordered w-40" :value="key" placeholder="Key"
           @change="renameKey(key, ($event.target as HTMLInputElement).value)" />
         <div class="flex-1">
-          <AutoFormField :node="element" v-model="model[key]" />
+          <AutoFormField :node="element" :errors="errors?.properties?.[key]" v-model="model[key]" />
         </div>
         <button type="button" class="btn btn-error btn-sm" @click="removeEntry(key)">删除</button>
       </div>
@@ -25,7 +27,7 @@
 
 <script setup lang="ts">
 const model = defineModel<any>()
-const props = defineProps<{ node: ZFPNode }>()
+const props = defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 
 const element = computed(() => props.node.element)
 const modelKeys = computed(() => Object.keys(model.value || {}))

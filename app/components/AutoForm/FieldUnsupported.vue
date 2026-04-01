@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 defineModel<any>()
-defineProps<{ node: ZFPNode }>()
+defineProps<{ node: ZFPNode, errors?: ErrorTree }>()
 </script>
