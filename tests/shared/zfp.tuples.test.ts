@@ -4,8 +4,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { zfp } from '../zfp'
-import { coordinateForm } from '../example'
+import { zfp } from '../../shared/utils/zfp'
+import { coordinateForm } from '../../shared/utils/example'
 
 describe('zfp - tuple schemas', () => {
   describe('coordinateForm', () => {

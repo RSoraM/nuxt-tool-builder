@@ -4,8 +4,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { zfp } from '../zfp'
-import { paymentForm, statusSchema } from '../example'
+import { zfp } from '../../shared/utils/zfp'
+import { paymentForm, statusSchema } from '../../shared/utils/example'
 
 describe('zfp - union schemas', () => {
   describe('ZodDiscriminatedUnion - paymentForm', () => {

@@ -3,8 +3,8 @@
  * Object schema tests
  */
 import { describe, it, expect } from 'vitest'
-import { zfp } from '../zfp'
-import { userProfile, shippingAddress, orderForm, bigintForm, fileForm, projectConfigForm, templateLiteralForm } from '../example'
+import { zfp } from '../../shared/utils/zfp'
+import { userProfile, shippingAddress, orderForm, bigintForm, fileForm, projectConfigForm, templateLiteralForm } from '../../shared/utils/example'
 
 describe('zfp - object schemas', () => {
   describe('shippingAddress', () => {

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { zfp } from '../zfp'
+import { zfp } from '../../shared/utils/zfp'
 
 describe('zfp - primitive types', () => {
   describe('ZodString', () => {

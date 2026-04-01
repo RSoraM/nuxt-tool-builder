@@ -3,8 +3,8 @@
  * Array schema tests
  */
 import { describe, it, expect } from 'vitest'
-import { zfp } from '../zfp'
-import { tagsForm, shippingAddress, orderForm } from '../example'
+import { zfp } from '../../shared/utils/zfp'
+import { tagsForm, shippingAddress, orderForm } from '../../shared/utils/example'
 
 describe('zfp - array schemas', () => {
   describe('tagsForm - array of primitives', () => {

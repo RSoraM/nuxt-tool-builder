@@ -3,7 +3,7 @@
  * Main smoke tests - verify all example schemas can be parsed without errors
  */
 import { describe, it, expect } from 'vitest'
-import { zfp } from '../zfp'
+import { zfp } from '../../shared/utils/zfp'
 import {
   userProfile,
   tagsForm,
@@ -23,7 +23,7 @@ import {
   nonOptionalForm,
   genericUnionForm,
   projectConfigForm,
-} from '../example'
+} from '../../shared/utils/example'
 
 describe('zfp - smoke tests', () => {
   describe('all example schemas', () => {
