@@ -14,7 +14,7 @@ describe('zfp - object schemas', () => {
       expect(result.node.label).toBe('收货地址')
       expect(result.node.path).toBe('')
       expect(result.node.template).toBe('object')
-      expect(result.node.required).toBe(false)
+      expect(result.node.required).toBe(true)
     })
 
     it('should parse recipient field', () => {
@@ -145,9 +145,8 @@ describe('zfp - object schemas', () => {
   describe('nested object paths', () => {
     it('should build correct paths for nested fields', () => {
       const result = zfp(orderForm)
-      // Note: current implementation doesn't build full paths for deeply nested fields
-      expect(result.node.children!.customer.children!.name.path).toBe('name')
-      expect(result.node.children!.shipping.children!.recipient.path).toBe('recipient')
+      expect(result.node.children!.customer.children!.name.path).toBe('customer.name')
+      expect(result.node.children!.shipping.children!.recipient.path).toBe('shipping.recipient')
     })
   })
 
@@ -213,7 +212,7 @@ describe('zfp - object schemas', () => {
 
     it('should parse environments as record', () => {
       const environments = result.node.children!.environments
-      expect(environments.template).toBe('object')
+      expect(environments.template).toBe('record')
       expect(environments.label).toBe('环境配置')
     })
 

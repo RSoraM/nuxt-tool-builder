@@ -13,17 +13,8 @@
       </button>
     </div>
 
-    <!-- Single option - show directly without tabs -->
-    <template v-else-if="selectedOption">
-      <AutoFormField :node="selectedOption" v-model="model">
-        <template #field_action>
-          <slot name="legend_action" />
-        </template>
-      </AutoFormField>
-    </template>
-
     <!-- Selected option fields -->
-    <template v-if="selectedOption && Object.keys(selectedOption.children || {}).length">
+    <template v-if="selectedOption">
       <AutoFormFieldset v-if="selectedOption.template === 'object'" :node="selectedOption" v-model="model">
         <template #legend_action>
           <slot name="legend_action" />
@@ -46,7 +37,6 @@ const props = defineProps<{ node: ZFPNode }>()
 const children = computed(() => props.node.children || {})
 const options = computed(() => props.node.options || [])
 
-// Track selected option index
 const selectedIndex = ref(0)
 
 const selectedOption = computed(() => {
@@ -55,20 +45,9 @@ const selectedOption = computed(() => {
 
 const selectOption = (index: number) => {
   selectedIndex.value = index
-  // Initialize model with the default values from the selected option
-  if (selectedOption.value?.default) {
-    model.value = { ...selectedOption.value.default }
-  } else if (selectedOption.value?.children) {
-    const defaults: any = {}
-    for (const key in selectedOption.value.children) {
-      defaults[key] = selectedOption.value!.children![key]!.default ?? ''
-    }
-    model.value = defaults
+  const defaults = props.node.optionDefaults
+  if (defaults && defaults[index] != null) {
+    model.value = structuredClone(defaults[index])
   }
 }
-
-// Initialize with first option
-onMounted(() => {
-  selectOption(0)
-})
 </script>

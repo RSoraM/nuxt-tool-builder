@@ -14,7 +14,7 @@ describe('zfp - wrapper types', () => {
     it('should parse required field', () => {
       const required = result.node.children!.required
       expect(required.template).toBe('text')
-      expect(required.required).toBe(false) // current implementation
+      expect(required.required).toBe(true)
     })
 
     it('should parse optional field', () => {

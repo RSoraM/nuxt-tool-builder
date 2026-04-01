@@ -24,7 +24,7 @@ describe('zfp - array schemas', () => {
     it('should have element with text template for primitive array', () => {
       const element = result.node.children!.tags.element!
       expect(element.template).toBe('text')
-      expect(element.path).toBe('[]')
+      expect(element.path).toBe('tags[]')
     })
 
     it('should have correct default model', () => {
@@ -57,9 +57,9 @@ describe('zfp - array schemas', () => {
       expect(element.children!.detail.label).toBe('详细地址')
     })
 
-    it('should have element path as []', () => {
+    it('should have element path as address[]', () => {
       const element = result.node.children!.address.element!
-      expect(element.path).toBe('[]')
+      expect(element.path).toBe('address[]')
     })
 
     it('should have default model for element', () => {
@@ -106,14 +106,14 @@ describe('zfp - array schemas', () => {
   })
 
   describe('array element paths', () => {
-    it('should use [] for top-level array elements', () => {
+    it('should use full path for top-level array elements', () => {
       const result = zfp(tagsForm)
-      expect(result.node.children!.tags.element!.path).toBe('[]')
+      expect(result.node.children!.tags.element!.path).toBe('tags[]')
     })
 
-    it('should use [key] for nested array elements', () => {
+    it('should use full path for nested array elements', () => {
       const result = zfp(orderForm)
-      expect(result.node.children!.items.element!.path).toBe('[]')
+      expect(result.node.children!.items.element!.path).toBe('items[]')
     })
   })
 })

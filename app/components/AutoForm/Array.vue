@@ -47,6 +47,6 @@ const props = defineProps<{ node: ZFPNode }>()
 
 const element = computed(() => props.node.element)
 
-const add = () => model.value.push(props.node.element?.default)
+const add = () => model.value.push(structuredClone(props.node.element?.default))
 const remove = (index: number) => model.value.splice(index, 1)
 </script>

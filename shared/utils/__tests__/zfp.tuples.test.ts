@@ -52,8 +52,8 @@ describe('zfp - tuple schemas', () => {
     })
 
     it('should have correct paths with brackets', () => {
-      expect(coords.children!['0'].path).toBe('[0]')
-      expect(coords.children!['1'].path).toBe('[1]')
+      expect(coords.children!['0'].path).toBe('coords[0]')
+      expect(coords.children!['1'].path).toBe('coords[1]')
     })
   })
 

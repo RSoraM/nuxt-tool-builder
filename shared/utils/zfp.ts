@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type TamplateType =
+export type TemplateType =
   | ''                  // 包裹器没有前端组件模板
   | 'text'              // 单行文本输入
   | 'number'            // 数字输入
@@ -15,48 +15,38 @@ export type TamplateType =
   | 'object'            // 对象类型，前端展示为嵌套表单
   | 'tuple'             // 元组类型，固定长度数组
   | 'union'             // 联合类型，前端展示为多选一
+  | 'record'            // Record 类型，前端展示为可增删的 key-value 列表
   | 'json';             // json 类型，前端展示为多行文本输入，输入内容必须是合法的 JSON 字符串
 
 /** zod 表单节点 */
 export interface ZFPNode {
   label: string;
   path: string;
-  /**
-   * text: 单行文本输入
-   * number: 数字输入
-   * bigint: 大整数输入
-   * password: 密码输入
-   * textarea: 多行文本输入
-   * checkbox: toggle 开关
-   * date: 日期输入
-   * select: 下拉选择
-   * file: 文件上传
-   * array: 数组类型，前端展示为可增删的列表
-   * object: 对象类型，前端展示为嵌套表单
-   * union: 联合类型，前端展示为多选一
-   * lazy: json 类型，前端展示为多行文本输入，输入内容必须是合法的 JSON 字符串
-   */
-  template: TamplateType;
+  template: TemplateType;
   required: boolean;
   placeholder?: string;
   autoComplete?: string;
   disabled?: boolean;
   hidden?: boolean;
-  // 用于 object 类型
+  // 用于 object / union / tuple 类型
   children?: {
     [key: string]: ZFPNode
   };
-  // 用于 array 类型
+  // 用于 array / set / record 类型
   element?: ZFPNode;
-  // 用于 select 类型
+  // 用于 select / union 类型
   options?: { label: string; value: any }[];
+  // 用于 union 类型：各分支的默认 model
+  optionDefaults?: any[];
   // 默认值
   default?: any;
+  // 原始 Zod 类型标记（提交前需转换）
+  originalType?: 'set' | 'record';
 }
 
 declare module 'zod/v4' {
   interface GlobalMeta {
-    template?: TamplateType;
+    template?: TemplateType;
     label?: string;
     placeholder?: string;
     autoComplete?: string;
@@ -64,269 +54,82 @@ declare module 'zod/v4' {
   }
 }
 
+/** 初始化基础节点并应用 meta 信息 */
+const applyPrimitive = (
+  schema: any, model: any, node: ZFPNode | undefined,
+  path: string, template: TemplateType, defaultModel: any, label?: string,
+): { node: ZFPNode; model: any } => {
+  const meta = schema.meta?.()
+  const lbl = label || template
+  node = node || { label: lbl, path, template, required: true }
+  node.label = meta?.label || node.label || lbl
+  node.template = meta?.template || node.template || template
+  node.placeholder = meta?.placeholder || node.placeholder
+  node.autoComplete = meta?.autoComplete || node.autoComplete
+  node.disabled = meta?.disabled || node.disabled
+  return { node, model: model || defaultModel }
+}
+
+/** 初始化包裹器节点 */
+const initWrapperNode = (node: ZFPNode | undefined, path: string): ZFPNode =>
+  node || { label: '', path, template: '', required: true }
+
 /** 路由 schema 到对应的 ZFPNode */
-const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
+const parse_schema = (schema: any, model: any, node?: ZFPNode, path: string = '') => {
 
   /* 原型类型 ===================================================================== */
 
-  if (schema instanceof z.ZodString) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'text',
-      path: '',
-      template: 'text',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'text'
-    node.template = meta?.template || node.template || 'text'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || ''
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodStringFormat) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'text',
-      path: '',
-      template: 'text',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'text'
-    node.template = meta?.template || node.template || 'text'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || ''
-
-    return { node, model }
-
-  }
-
-  if (schema instanceof z.ZodNumber) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'number',
-      path: '',
-      template: 'number',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'number'
-    node.template = meta?.template || node.template || 'number'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || 0
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodBigInt) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'bigint',
-      path: '',
-      template: 'bigint',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'bigint'
-    node.template = meta?.template || node.template || 'bigint'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || 0n
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodBoolean) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'checkbox',
-      path: '',
-      template: 'checkbox',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'checkbox'
-    node.template = meta?.template || node.template || 'checkbox'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || false
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodDate) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'date',
-      path: '',
-      template: 'date',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'date'
-    node.template = meta?.template || node.template || 'date'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || new Date()
-
-    return { node, model }
-  }
+  if (schema instanceof z.ZodString) return applyPrimitive(schema, model, node, path, 'text', '')
+  if (schema instanceof z.ZodStringFormat) return applyPrimitive(schema, model, node, path, 'text', '')
+  if (schema instanceof z.ZodNumber) return applyPrimitive(schema, model, node, path, 'number', 0)
+  if (schema instanceof z.ZodBigInt) return applyPrimitive(schema, model, node, path, 'bigint', 0n)
+  if (schema instanceof z.ZodBoolean) return applyPrimitive(schema, model, node, path, 'checkbox', false)
+  if (schema instanceof z.ZodDate) return applyPrimitive(schema, model, node, path, 'date', new Date().toISOString().slice(0, 10))
+  if (schema instanceof z.ZodLazy) return applyPrimitive(schema, model, node, path, 'json', '')
+  if (schema instanceof z.ZodFile) return applyPrimitive(schema, model, node, path, 'file', null)
 
   if (schema instanceof z.ZodEnum) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'select',
-      path: '',
-      template: 'select',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'select'
-    node.template = meta?.template || node.template || 'select'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    node.options = schema.options.map(
-      (value) => ({ label: `${value}`, value: value })
-    )
-
-    model = model || schema.options[0]
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodLazy) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'json',
-      path: '',
-      template: 'json',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'json'
-    node.template = meta?.template || node.template || 'json'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || ''
-
-    return { node, model }
-  }
-
-  if (schema instanceof z.ZodFile) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'file',
-      path: '',
-      template: 'file',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'file'
-    node.template = meta?.template || node.template || 'file'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = meta?.disabled || node.disabled
-
-    model = model || null
-
-    return { node, model }
+    const result = applyPrimitive(schema, model, node, path, 'select', schema.options[0])
+    result.node.options = schema.options.map((value: any) => ({ label: `${value}`, value }))
+    return result
   }
 
   if (schema instanceof z.ZodLiteral) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'text',
-      path: '',
-      template: 'text',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'text'
-    node.template = meta?.template || node.template || 'text'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.disabled = true
-    node.default = schema.value
-
-    model = model || schema.value
-
-    return { node, model }
+    const result = applyPrimitive(schema, model, node, path, 'text', schema.value)
+    result.node.disabled = true
+    result.node.default = schema.value
+    return result
   }
 
   /* 包裹器 ====================================================================== */
 
   if (schema instanceof z.ZodOptional) {
-    node = node || {
-      label: '',
-      path: '',
-      template: '', // optional 类型不直接对应前端组件，具体展示由内部类型决定
-      required: false,
-    }
+    node = initWrapperNode(node, path)
     node.required = false
-    model = model || undefined
-    schema = schema.unwrap()
-
-    return parse_schema(schema, model, node)
+    return parse_schema(schema.unwrap(), model || undefined, node, path)
   }
 
   if (schema instanceof z.ZodNonOptional) {
-    node = node || {
-      label: '',
-      path: '',
-      template: '', // nonoptional 类型不直接对应前端组件，具体展示由内部类型决定
-      required: true,
-    }
+    node = initWrapperNode(node, path)
     node.required = true
-    model = model || undefined
-    schema = schema.unwrap()
-
-    return parse_schema(schema, model, node)
+    return parse_schema(schema.unwrap(), model || undefined, node, path)
   }
 
   if (schema instanceof z.ZodDefault) {
-    node = node || {
-      label: '',
-      path: '',
-      template: '', // default 类型不直接对应前端组件，具体展示由内部类型决定
-      required: false,
-    }
+    node = initWrapperNode(node, path)
     node.required = false
     node.default = schema.def.defaultValue
-    model = model || schema.def.defaultValue
-    schema = schema.unwrap()
-
-    return parse_schema(schema, model, node)
+    return parse_schema(schema.unwrap(), model || schema.def.defaultValue, node, path)
   }
 
   if (schema instanceof z.ZodNullable) {
-    node = node || {
-      label: '',
-      path: '',
-      template: '', // nullable 类型不直接对应前端组件，具体展示由内部类型决定
-      required: false,
-    }
+    node = initWrapperNode(node, path)
     node.required = false
-    model = model || null
-    schema = schema.unwrap()
-
-    return parse_schema(schema, model, node)
+    return parse_schema(schema.unwrap(), model || null, node, path)
   }
 
   if (schema instanceof z.ZodPipe) {
-    schema = schema.def.in
-    return parse_schema(schema, model, node)
+    return parse_schema(schema.def.in, model, node, path)
   }
 
   /* 嵌套类型 ===================================================================== */
@@ -335,19 +138,19 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'union',
-      path: '',
+      path,
       template: 'union',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'union'
     node.template = meta?.template || node.template || 'union'
     node.placeholder = meta?.placeholder || node.placeholder
     node.children = node.children || {}
-    model = model || {}
 
     const options = schema._zod.def.options
     const discriminator = schema._zod.def.discriminator
     node.options = []
+    node.optionDefaults = []
 
     options.forEach((optionSchema: any, index: number) => {
       const discriminatorField = optionSchema.shape?.[discriminator]
@@ -355,11 +158,10 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
       const optionLabel = optionSchema.meta()?.label || String(discriminatorValue) || String(index)
       const optionPath = node!.path ? `${node!.path}[${index}]` : `[${index}]`
 
-      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, model[index])
+      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, undefined, undefined, optionPath)
       optionNode!.label = optionLabel
-      optionNode!.path = optionPath
 
-      // Hide the discriminator field from children (it's only used for typing/discrimination)
+      // Hide the discriminator field from children
       if (optionNode!.children && discriminator in optionNode!.children) {
         optionNode!.children[discriminator]!.hidden = true
       }
@@ -367,14 +169,10 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
       // Recursively hide discriminator in nested union options
       function hideDiscriminatorInNestedUnions(n: any, disc: string) {
         if (!n?.children) return
-        // For union nodes, the children are the options keyed by index
-        // Each option may be an object containing the discriminator field
         Object.values(n.children).forEach((child: any) => {
-          // Hide discriminator if present in direct children of option
           if (child?.children && disc in child.children) {
             child.children[disc]!.hidden = true
           }
-          // Recurse into any nested union
           if (child?.template === 'union') {
             hideDiscriminatorInNestedUnions(child, disc)
           }
@@ -384,8 +182,11 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
 
       node!.children![String(index)] = optionNode!
       node!.options!.push({ label: optionLabel, value: discriminatorValue ?? index })
-      model[index] = optionModel
+      node!.optionDefaults!.push(optionModel)
     })
+
+    // model = first option's default
+    model = node.optionDefaults[0] ?? {}
 
     return { node, model }
   }
@@ -394,30 +195,32 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'union',
-      path: '',
+      path,
       template: 'union',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'union'
     node.template = meta?.template || node.template || 'union'
     node.placeholder = meta?.placeholder || node.placeholder
     node.children = node.children || {}
     node.options = []
-    model = model || {}
+    node.optionDefaults = []
 
     const options = schema._zod.def.options
     options.forEach((optionSchema: any, index: number) => {
       const optionLabel = optionSchema.meta()?.label || String(index)
       const optionPath = node!.path ? `${node!.path}[${index}]` : `[${index}]`
 
-      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, model[index])
+      const { node: optionNode, model: optionModel } = parse_schema(optionSchema, undefined, undefined, optionPath)
       optionNode!.label = optionLabel
-      optionNode!.path = optionPath
 
       node!.children![String(index)] = optionNode!
       node!.options!.push({ label: optionLabel, value: index })
-      model[index] = optionModel
+      node!.optionDefaults!.push(optionModel)
     })
+
+    // model = first option's default
+    model = node.optionDefaults[0] ?? {}
 
     return { node, model }
   }
@@ -426,9 +229,9 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'intersection',
-      path: '',
+      path,
       template: 'object',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'intersection'
     node.template = meta?.template || node.template || 'object'
@@ -439,11 +242,11 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const leftSchema = schema._zod.def.left
     const rightSchema = schema._zod.def.right
 
-    const { node: leftNode, model: leftModel } = parse_schema(leftSchema, model)
+    const { node: leftNode, model: leftModel } = parse_schema(leftSchema, model, undefined, node.path)
     Object.assign(node!.children, leftNode!.children || {})
     Object.assign(model, leftModel || {})
 
-    const { node: rightNode, model: rightModel } = parse_schema(rightSchema, model)
+    const { node: rightNode, model: rightModel } = parse_schema(rightSchema, model, undefined, node.path)
     Object.assign(node!.children, rightNode!.children || {})
     Object.assign(model, rightModel || {})
 
@@ -454,9 +257,9 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'tuple',
-      path: '',
+      path,
       template: 'tuple',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'tuple'
     node.template = meta?.template || node.template || 'tuple'
@@ -467,9 +270,9 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const items = schema._zod.def.items
     items.forEach((itemSchema: any, index: number) => {
       const key = String(index)
-      const { node: itemNode, model: itemModel } = parse_schema(itemSchema, model[index])
+      const itemPath = node!.path ? `${node!.path}[${key}]` : `[${key}]`
+      const { node: itemNode, model: itemModel } = parse_schema(itemSchema, model[index], undefined, itemPath)
       itemNode!.label = itemSchema.meta()?.label || key
-      itemNode!.path = node!.path ? `${node!.path}[${key}]` : `[${key}]`
       node!.children![key] = itemNode!
       model[index] = itemModel
     })
@@ -481,24 +284,23 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'record',
-      path: '',
-      template: 'object',
-      required: false,
+      path,
+      template: 'record',
+      required: true,
     }
     node.label = meta?.label || node.label || 'record'
-    node.template = meta?.template || node.template || 'object'
+    node.template = meta?.template || node.template || 'record'
     node.placeholder = meta?.placeholder || node.placeholder
-    node.children = node.children || {}
+    node.originalType = 'record'
     model = model || {}
 
     const valueSchema = schema._zod.def.valueType
+    const elementPath = node.path ? `${node.path}[]` : '[]'
+    const { node: elementNode, model: elementModel } = parse_schema(valueSchema, undefined, undefined, elementPath)
+    elementNode!.label = 'value'
+    elementNode!.default = elementModel
 
-    const { node: valueNode, model: valueModel } = parse_schema(valueSchema, model['__key__'])
-    valueNode!.label = 'value'
-    valueNode!.path = node!.path ? `${node!.path}[key]` : '[key]'
-
-    node!.children!['__record__'] = valueNode!
-    model.__record__ = valueModel
+    node!.element = elementNode!
 
     return { node, model }
   }
@@ -507,21 +309,20 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'set',
-      path: '',
+      path,
       template: 'array',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'set'
     node.template = meta?.template || node.template || 'array'
     node.placeholder = meta?.placeholder || node.placeholder
-    node.element = node.element || undefined
+    node.originalType = 'set'
     model = model || []
 
     const valueSchema = schema._zod.def.valueType
-
-    const { node: elementNode, model: elementModel } = parse_schema(valueSchema, model[0])
+    const elementPath = node.path ? `${node.path}[]` : '[]'
+    const { node: elementNode, model: elementModel } = parse_schema(valueSchema, undefined, undefined, elementPath)
     elementNode!.label = 'item'
-    elementNode!.path = node!.path ? `${node!.path}[]` : '[]'
     elementNode!.default = elementModel
 
     node!.element = elementNode!
@@ -531,30 +332,19 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
   }
 
   if (schema instanceof z.ZodTemplateLiteral) {
-    const meta = schema.meta()
-    node = node || {
-      label: 'template_literal',
-      path: '',
-      template: 'text',
-      required: false,
-    }
-    node.label = meta?.label || node.label || 'template_literal'
-    node.template = meta?.template || node.template || 'text'
-    node.placeholder = meta?.placeholder || node.placeholder
-    node.autoComplete = meta?.autoComplete || node.autoComplete
-    node.default = schema.def.parts.map((_, i) => typeof _ === 'string' ? _ : `{${i}}`).join('')
-
-    model = model || node.default
-    return { node, model }
+    const defaultStr = schema.def.parts.map((_: any, i: number) => typeof _ === 'string' ? _ : `{${i}}`).join('')
+    const result = applyPrimitive(schema, model, node, path, 'text', defaultStr, 'template_literal')
+    result.node.default = defaultStr
+    return result
   }
 
   if (schema instanceof z.ZodObject) {
     const meta = schema.meta()
     node = node || {
       label: 'object',
-      path: '',
+      path,
       template: 'object',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'object'
     node.template = meta?.template || node.template || 'object'
@@ -568,9 +358,9 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     for (const field in shape) {
       const fieldSchema = shape[field]
       const fieldSchemaMeta = fieldSchema.meta()
-      const { node: fieldNode, model: fieldModel } = parse_schema(shape[field], model[field])
+      const fieldPath = node.path ? `${node.path}.${field}` : field
+      const { node: fieldNode, model: fieldModel } = parse_schema(shape[field], model[field], undefined, fieldPath)
       fieldNode.label = fieldSchemaMeta?.label || field
-      fieldNode.path = node.path ? `${node.path}.${field}` : field
 
       node.children[field] = fieldNode
       model[field] = fieldModel
@@ -583,9 +373,9 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     const meta = schema.meta()
     node = node || {
       label: 'array',
-      path: '',
+      path,
       template: 'array',
-      required: false,
+      required: true,
     }
     node.label = meta?.label || node.label || 'array'
     node.template = meta?.template || node.template || 'array'
@@ -593,8 +383,8 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
     node.autoComplete = meta?.autoComplete || node.autoComplete
 
     const elementSchema = schema.unwrap()
-    const { node: elementNode, model: elementModel } = parse_schema(elementSchema, undefined)
-    elementNode.path = node.path ? `${node.path}[]` : '[]'
+    const elementPath = node.path ? `${node.path}[]` : '[]'
+    const { node: elementNode, model: elementModel } = parse_schema(elementSchema, undefined, undefined, elementPath)
     elementNode.default = elementModel
 
     model = model || [elementModel]
@@ -602,8 +392,6 @@ const parse_schema = (schema: any, model: any, node?: ZFPNode) => {
 
     return { node, model }
   }
-
-
 
   throw new Error('This schema cannot be represented in ZFPNode', { cause: schema })
 }

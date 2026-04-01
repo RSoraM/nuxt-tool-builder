@@ -109,9 +109,20 @@ describe('zfp - union schemas', () => {
   })
 
   describe('union model structure', () => {
-    it('should have indexed model for union options', () => {
+    it('should have first option model for discriminated union', () => {
       const result = zfp(paymentForm)
       expect(result.model.payment).toBeDefined()
+      expect(result.model.payment.method).toBe('card')
+    })
+
+    it('should have optionDefaults on union node', () => {
+      const result = zfp(paymentForm)
+      const payment = result.node.children!.payment
+      expect(payment.optionDefaults).toBeDefined()
+      expect(payment.optionDefaults!.length).toBe(3)
+      expect(payment.optionDefaults![0].method).toBe('card')
+      expect(payment.optionDefaults![1].method).toBe('alipay')
+      expect(payment.optionDefaults![2].method).toBe('wechat')
     })
   })
 })
