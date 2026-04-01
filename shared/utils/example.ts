@@ -1,282 +1,91 @@
 import { z } from "zod/v4";
 
 // ============================================================
-// 示例 1: 嵌套对象 — 用户资料
+// 示例 1: 基础字段 — 覆盖所有原始类型与包裹器
+// 覆盖: string, nonempty, email(stringFormat), templateLiteral, number,
+//       bigint, boolean, date, file, enum(select), literal(checkbox),
+//       password/textarea(meta template), optional, nullable, nonOptional, default
 // ============================================================
-export const userProfile = z.object({
-  username: z
-    .string()
-    .min(3)
-    .max(20)
-    .meta({ label: "用户名", placeholder: "3-20个字符" }),
-  email: z.email()
+export const primitiveForm = z.object({
+  name: z.string().nonempty("姓名不能为空").min(1, "至少1个字符").max(20, "最多20个字符")
+    .meta({ label: "姓名", placeholder: "1-20个字符" }),
+  email: z.email("邮箱格式不正确")
     .meta({ label: "邮箱", placeholder: "请输入邮箱" }),
-  age: z.number().min(0).max(150).default(20).optional()
+  phone: z.templateLiteral([z.string().length(3), '-', z.string().length(4)])
+    .meta({ label: "电话", placeholder: "xxx-xxxx" }),
+  age: z.number().min(0, "年龄不能为负").max(150, "年龄不能超过150").default(20).optional()
     .meta({ label: "年龄", placeholder: "请输入年龄" }),
-  bio: z.string().max(500).optional()
-    .meta({ label: "个人简介", placeholder: "介绍一下你自己" }),
-  newsletter: z.boolean().default(false)
-    .meta({ label: "订阅通讯", placeholder: "是否订阅通讯" }),
-}).meta({ label: "用户资料" });
+  score: z.number({ error: "评分为必填项" }).nonoptional("评分不能为空")
+    .meta({ label: "评分", placeholder: "必填评分" }),
+  bio: z.string().max(500, "简介最多500字").nullable()
+    .meta({ label: "简介", placeholder: "可为空", template: 'textarea' }),
+  password: z.string().nonempty("密码不能为空").min(8, "密码至少8位")
+    .meta({ label: "密码", placeholder: "至少8位", template: 'password' }),
+  birthday: z.date({ error: "请选择有效日期" })
+    .meta({ label: "生日" }),
+  balance: z.bigint({ error: "请输入有效的整数" })
+    .meta({ label: "余额", placeholder: "请输入金额" }),
+  avatar: z.file({ error: "请上传文件" })
+    .meta({ label: "头像" }),
+  active: z.boolean().default(false)
+    .meta({ label: "启用" }),
+  role: z.enum(["admin", "user", "guest"], { error: "请选择有效角色" })
+    .meta({ label: "角色" }),
+  agree: z.literal(true, { error: "必须同意条款" })
+    .meta({ label: "同意条款", template: 'checkbox' }),
+}).meta({ label: "基础字段" });
 
 // ============================================================
-// 示例 2: 数组 — 标签列表
+// 示例 2: 容器类型 — 覆盖所有集合与嵌套结构
+// 覆盖: array(scalar), array(object), array(array), tuple,
+//       set, record(string,scalar), record(string,object), 嵌套 object
 // ============================================================
-export const tagsForm = z.object({
-  title: z.string()
-    .meta({ label: "标题", placeholder: "请输入标题" }),
-  tags: z.array(z.string().min(1).default('test'))
-    .min(1)
-    .max(10)
-    .default(['example'])
-    .meta({ label: "标签", placeholder: "请输入标签" }),
-});
+export const collectionForm = z.object({
+  tags: z.array(z.string().nonempty("标签不能为空").default('tag')).min(1, "至少添加1个标签").max(10, "最多10个标签")
+    .meta({ label: "标签" }),
+  items: z.array(z.object({
+    name: z.string().nonempty("商品名称不能为空").meta({ label: "名称" }),
+    qty: z.number().min(1, "数量至少为1").default(1).meta({ label: "数量" }),
+  }).meta({ label: "商品" })).min(1, "至少添加1件商品")
+    .meta({ label: "商品列表" }),
+  matrix: z.number({ error: "请输入数字" }).array().array()
+    .meta({ label: "矩阵" }),
+  coords: z.tuple([
+    z.number({ error: "经度必须为数字" }).meta({ label: "经度" }),
+    z.number({ error: "纬度必须为数字" }).meta({ label: "纬度" }),
+  ]).meta({ label: "坐标" }),
+  uniqueIds: z.set(z.string().nonempty("ID不能为空"))
+    .meta({ label: "唯一ID" }),
+  headers: z.record(z.string(), z.string().nonempty("请求头值不能为空"))
+    .meta({ label: "请求头" }),
+  endpoints: z.record(z.string(), z.object({
+    url: z.string().nonempty("URL不能为空").meta({ label: "URL" }),
+    method: z.enum(['GET', 'POST', 'PUT', 'DELETE'], { error: "请选择有效方法" }).meta({ label: "方法" }),
+  })).meta({ label: "接口配置" }),
+}).meta({ label: "容器类型" });
 
 // ============================================================
-// 示例 3: 深度嵌套 — 收货地址
+// 示例 3: 联合与组合 — 覆盖 union 相关类型
+// 覆盖: discriminatedUnion, union(generic), intersection
 // ============================================================
-export const shippingAddress = z.object({
-  recipient: z.string()
-    .meta({ label: "收件人", placeholder: "请输入收件人" }),
-  phone: z.string().regex(/^1[3-9]\d{9}$/)
-    .meta({ label: "手机号", placeholder: "请输入手机号" }),
-  address: z.array(
-    z.object({
-      province: z.string()
-        .meta({ label: "省份", placeholder: "请输入省份" }),
-      city: z.string()
-        .meta({ label: "城市", placeholder: "请输入城市" }),
-      district: z.string()
-        .meta({ label: "区县", placeholder: "请输入区县" }),
-      detail: z.string()
-        .meta({ label: "详细地址", placeholder: "请输入详细地址" }),
-    }).meta({ label: '地址' })
-  ).meta({ label: "地址列表", placeholder: "请输入地址列表" }),
-  isDefault: z.boolean().default(false)
-    .meta({ label: "设为默认", placeholder: "是否设为默认" }),
-}).meta({ label: '收货地址' });
-
-// ============================================================
-// 示例 4: 判别联合 — 支付方式
-// ============================================================
-export const paymentForm = z.object({
+export const unionForm = z.object({
   payment: z.discriminatedUnion("method", [
     z.object({
-      method: z.literal("card")
-        .meta({ label: "银行卡" }),
-      cardNumber: z.string().regex(/^\d{16}$/)
-        .meta({ label: "卡号", placeholder: "请输入卡号" }),
-      expiry: z.string()
-        .meta({ label: "有效期", placeholder: "请输入有效期" }),
-      cvv: z.string()
-        .meta({ label: "CVV", placeholder: "请输入CVV" }),
-    }),
+      method: z.literal("card").meta({ label: "方式" }),
+      cardNumber: z.string().nonempty("卡号不能为空").meta({ label: "卡号", placeholder: "16位数字" }),
+    }).meta({ label: "银行卡" }),
     z.object({
-      method: z.literal("alipay")
-        .meta({ label: "支付宝" }),
-      account: z.string()
-        .meta({ label: "支付宝账号", placeholder: "请输入支付宝账号" }),
-    }),
-    z.object({
-      method: z.literal("wechat")
-        .meta({ label: "微信支付" }),
-      openId: z.string()
-        .meta({ label: "微信 OpenID", placeholder: "请输入微信 OpenID" }),
-    }),
-  ]).meta({ label: "支付方式" })
-})
-
-// ============================================================
-// 示例 5: 元组 — 坐标
-// ============================================================
-export const coordinateForm = z.object({
-  name: z.string()
-    .meta({ label: "地点名称", placeholder: "请输入地点名称" }),
-  coords: z.tuple([
-    z.number().meta({ label: "经度", placeholder: "请输入经度" }),
-    z.number().meta({ label: "纬度", placeholder: "请输入纬度" })
-  ]),
-});
-
-// ============================================================
-// 示例 6: 可选 & nullable
-// ============================================================
-export const optionalDemo = z.object({
-  required: z.string()
-    .meta({ label: "必填字段", placeholder: "请输入必填字段" }),
-  optional: z.string().optional()
-    .meta({ label: "可选字段", placeholder: "请输入可选字段" }),
-  nullable: z.string().nullable()
-    .meta({ label: "可空字段", placeholder: "请输入可空字段" }),
-  optionalNullable: z
-    .string()
-    .optional()
-    .nullable()
-    .meta({ label: "可选且可空", placeholder: "请输入可选且可空字段" }),
-});
-
-// ============================================================
-// 示例 7: 带 refine 的自定义验证
-// ============================================================
-export const refinedForm = z
-  .object({
-    password: z.string().min(8).meta({ label: "密码", placeholder: "请输入密码|至少8位", template: 'password' }),
-    confirmPassword: z.string().meta({ label: "确认密码", placeholder: "请输入确认密码", template: 'password' }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "两次密码不一致",
-    path: ["confirmPassword"],
-  });
-
-// ============================================================
-// 示例 8: 复杂表单 — 完整订单
-// ============================================================
-export const orderForm = z.object({
-  customer: z.object({
-    name: z.string()
-      .meta({ label: "客户姓名", placeholder: "请输入客户姓名" }),
-    email: z.email()
-      .meta({ label: "邮箱", placeholder: "请输入邮箱" }),
-    phone: z.string().optional()
-      .meta({ label: "电话", placeholder: "请输入电话" }),
-  }),
-  status: z.enum(["draft", "published", "archived"])
-    .meta({ label: "状态", placeholder: "请选择状态" }),
-  extra: z.number().array().array()
-    .meta({ label: "额外数据", placeholder: "请输入额外数据" }),
-  items: z.object({
-    productName: z.string()
-      .meta({ label: "商品名称", placeholder: "请输入商品名称" }),
-    quantity: z.number().min(1).default(1)
-      .meta({ label: "数量", placeholder: "请输入数量" }),
-    unitPrice: z.number().min(0)
-      .meta({ label: "单价", placeholder: "请输入单价" }),
-  }).meta({ label: "商品" })
-    .array()
-    .min(1)
-    .meta({ label: "商品列表", placeholder: "请输入商品列表" }),
-  shipping: shippingAddress,
-  payment: paymentForm.shape.payment,
-  notes: z.string().max(1000).optional()
-    .meta({ label: "备注", placeholder: "请输入备注" }),
-  agreeToTerms: z.literal(true)
-    .meta({ label: "同意条款", placeholder: "请同意条款", template: 'checkbox' }),
-});
-
-// ============================================================
-// 示例 9: 嵌套 discriminatedUnion
-// ============================================================
-export const statusSchema = z.object({
-  statusForm: z.discriminatedUnion("status", [
-    z.object({
-      status: z.literal("success").meta({ label: "状态" }),
-      data: z.string().meta({ label: "数据", placeholder: "请输入数据" }),
-    }).meta({ label: "成功" }),
-    z.discriminatedUnion("code", [
-      z.object({
-        status: z.literal("failed").meta({ label: "状态" }),
-        message: z.string().meta({ label: "消息", placeholder: "请输入消息" }),
-        code: z.literal(400).meta({ label: "错误码" }),
-      }).meta({ label: "失败 (400)" }),
-      z.object({
-        status: z.literal("failed").meta({ label: "状态" }),
-        message: z.string().meta({ label: "消息", placeholder: "请输入消息" }),
-        code: z.literal(401).meta({ label: "错误码" }),
-      }).meta({ label: "失败 (401)" }),
-      z.object({
-        status: z.literal("failed").meta({ label: "状态" }),
-        message: z.string().meta({ label: "消息", placeholder: "请输入消息" }),
-        code: z.literal(500).meta({ label: "错误码" }),
-      }).meta({ label: "失败 (500)" }),
-    ]).meta({ label: "失败" }),
-  ]).meta({ label: "状态表单" })
-});
-
-// ============================================================
-// 示例 10: BigInt 和日期
-// ============================================================
-export const bigintForm = z.object({
-  id: z.bigint().meta({ label: "ID", placeholder: "请输入ID" }),
-  timestamp: z.date().meta({ label: "时间戳", placeholder: "请选择时间" }),
-}).meta({ label: "BigInt表单" });
-
-// ============================================================
-// 示例 11: 文件上传
-// ============================================================
-export const fileForm = z.object({
-  avatar: z.file().meta({ label: "头像", placeholder: "请上传头像" }),
-  document: z.file().meta({ label: "文档", placeholder: "请上传文档" }),
-}).meta({ label: "文件上传" });
-
-// ============================================================
-// 示例 12: Set 类型 (映射为数组)
-// ============================================================
-export const setForm = z.object({
-  uniqueTags: z.set(z.string()).meta({ label: "唯一标签", placeholder: "请输入标签" }),
-}).meta({ label: "Set表单" });
-
-// ============================================================
-// 示例 13: Record 类型
-// ============================================================
-export const recordForm = z.object({
-  metadata: z.record(z.string(), z.string()).meta({ label: "元数据", placeholder: "请输入元数据" }),
-}).meta({ label: "Record表单" });
-
-// ============================================================
-// 示例 14: Intersection 交叉类型
-// ============================================================
-export const intersectionForm = z.object({
-  combined: z.object({
-    name: z.string().meta({ label: "名称" }),
-  }).and(z.object({
-    age: z.number().meta({ label: "年龄" }),
-  })).meta({ label: "组合信息" }),
-}).meta({ label: "交叉类型" });
-
-// ============================================================
-// 示例 15: TemplateLiteral 模板字面量
-// ============================================================
-export const templateLiteralForm = z.object({
-  phone: z.templateLiteral([z.string().length(3), '-', z.string().length(4)]).meta({ label: "电话号码", placeholder: "请输入 xxx-xxxx" }),
-}).meta({ label: "模板字面量" });
-
-// ============================================================
-// 示例 16: ZodNonOptional
-// ============================================================
-export const nonOptionalForm = z.object({
-  required: z.string().nonoptional().meta({ label: "必填字符串", placeholder: "请输入" }),
-}).meta({ label: "NonOptional表单" });
-
-// ============================================================
-// 示例 17: 通用 Union (非 discriminated)
-// ============================================================
-export const genericUnionForm = z.object({
+      method: z.literal("alipay").meta({ label: "方式" }),
+      account: z.string().nonempty("账号不能为空").meta({ label: "账号" }),
+    }).meta({ label: "支付宝" }),
+  ]).meta({ label: "支付方式" }),
   value: z.union([
-    z.object({ type: z.literal('string'), content: z.string() }),
-    z.object({ type: z.literal('number'), content: z.number() }),
-    z.object({ type: z.literal('boolean'), content: z.boolean() }),
+    z.object({ kind: z.literal('text').meta({ label: "类型" }), content: z.string().nonempty("内容不能为空").meta({ label: "内容" }) }),
+    z.object({ kind: z.literal('num').meta({ label: "类型" }), content: z.number({ error: "请输入数字" }).meta({ label: "内容" }) }),
   ]).meta({ label: "通用联合" }),
-}).meta({ label: "通用联合表单" });
-
-// ============================================================
-// 示例 18: 复杂嵌套 - 完整项目配置
-// ============================================================
-export const projectConfigForm = z.object({
-  project: z.object({
-    name: z.string().meta({ label: "项目名称", placeholder: "请输入项目名称" }),
-    version: z.string().regex(/^\d+\.\d+\.\d+$/).meta({ label: "版本号", placeholder: "1.0.0" }),
-    settings: z.object({
-      debug: z.boolean().default(false).meta({ label: "调试模式" }),
-      maxRetries: z.number().min(0).max(10).default(3).meta({ label: "最大重试次数" }),
-    }).meta({ label: "设置" }),
-  }).meta({ label: "项目信息" }),
-  environments: z.record(z.string(), z.object({
-    url: z.string().meta({ label: "URL" }),
-    apiKey: z.string().meta({ label: "API Key", template: 'password' }),
-  })).meta({ label: "环境配置" }),
-  hooks: z.array(z.object({
-    event: z.enum(['pre-build', 'post-build', 'pre-deploy', 'post-deploy']).meta({ label: "事件" }),
-    command: z.string().meta({ label: "命令", placeholder: "请输入命令" }),
-    enabled: z.boolean().default(true).meta({ label: "启用" }),
-  })).meta({ label: "钩子", placeholder: "请配置钩子" }),
-}).meta({ label: "项目配置" });
+  combined: z.object({
+    name: z.string().nonempty("名称不能为空").meta({ label: "名称" }),
+  }).and(z.object({
+    age: z.number({ error: "请输入有效年龄" }).meta({ label: "年龄" }),
+  })).meta({ label: "交叉类型" }),
+}).meta({ label: "联合与组合" });

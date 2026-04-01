@@ -48,23 +48,9 @@
 import { z } from 'zod/v4'
 
 const ZFPList = [
-  { name: 'userProfile', label: '用户资料', schema: userProfile },
-  { name: 'tagsForm', label: '标签列表', schema: tagsForm },
-  { name: 'shippingAddress', label: '收货地址', schema: shippingAddress },
-  { name: 'coordinateForm', label: '坐标', schema: coordinateForm },
-  { name: 'optionalDemo', label: '可选字段', schema: optionalDemo },
-  { name: 'paymentForm', label: '支付方式', schema: paymentForm },
-  { name: 'statusSchema', label: '状态表单', schema: statusSchema },
-  { name: 'orderForm', label: '完整订单', schema: orderForm },
-  { name: 'bigintForm', label: 'BigInt表单', schema: bigintForm },
-  { name: 'fileForm', label: '文件上传', schema: fileForm },
-  { name: 'setForm', label: 'Set表单', schema: setForm },
-  { name: 'recordForm', label: 'Record表单', schema: recordForm },
-  { name: 'intersectionForm', label: '交叉类型', schema: intersectionForm },
-  { name: 'templateLiteralForm', label: '模板字面量', schema: templateLiteralForm },
-  { name: 'nonOptionalForm', label: 'NonOptional', schema: nonOptionalForm },
-  { name: 'genericUnionForm', label: '通用联合', schema: genericUnionForm },
-  { name: 'projectConfigForm', label: '项目配置', schema: projectConfigForm },
+  { name: 'primitiveForm', label: '基础字段', schema: primitiveForm },
+  { name: 'collectionForm', label: '容器类型', schema: collectionForm },
+  { name: 'unionForm', label: '联合与组合', schema: unionForm },
 ].map((item) => {
   const { node, model, } = zfp(item.schema)
   return { ...item, node, data: reactive(model) }

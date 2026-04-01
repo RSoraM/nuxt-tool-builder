@@ -10,6 +10,8 @@
     <AutoFormField v-for="key in visibleChildren" :key="key" :node="children[key]!" :errors="errors?.properties?.[key]"
       v-model="model[key]" />
 
+    <slot name="error" />
+
     <slot name="submit" />
   </fieldset>
 </template>

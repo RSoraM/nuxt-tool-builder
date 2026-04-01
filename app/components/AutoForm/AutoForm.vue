@@ -4,6 +4,10 @@
       <template #submit>
         <slot />
       </template>
+
+      <template #error v-if="error">
+        <pre class="text-error">{{ z.prettifyError(error) }}</pre>
+      </template>
     </AutoFormFieldset>
   </form>
 </template>
