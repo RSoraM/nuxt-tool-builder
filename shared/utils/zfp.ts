@@ -58,6 +58,7 @@ declare module 'zod/v4' {
     placeholder?: string;
     autoComplete?: string;
     disabled?: boolean;
+    hidden?: boolean;
   }
 }
 

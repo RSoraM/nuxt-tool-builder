@@ -26,6 +26,8 @@
   },
   "devDependencies": {
     "@antfu/ni": "^30.0.0",
+    "@iconify/json": "^2.2.458",
+    "@iconify/tailwind4": "^1.2.3",
     "git-cz": "^4.9.0",
     "vitest": "^4.1.2"
   },
