@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import z4 from 'zod/v4';
+import { cloneDeep } from 'lodash-es'
 
 const data = defineModel()
 const {
@@ -106,12 +107,16 @@ const unwrap = (schema: any, node?: ATFNode): { schema: z4.ZodType, node: ATFNod
   }
   if (schema instanceof z4.ZodDefault) {
     node.required = false
-    node.default = node.default || schema.def.defaultValue
+    if (node.default === undefined) {
+      node.default = cloneDeep(schema.def.defaultValue)
+    }
     return unwrap(schema.unwrap(), node)
   }
   if (schema instanceof z4.ZodNullable) {
     node.required = false
-    node.default = node.default || null
+    if (node.default === undefined) {
+      node.default = null
+    }
     return unwrap(schema.unwrap(), node)
   }
   if (schema instanceof z4.ZodPipe) {
@@ -190,7 +195,9 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     apply_meta(node, meta, label, '常量', 'select')
 
     const values = Array.from(_.values)
-    node.default = node.default || values[0]
+    if (node.default === undefined) {
+      node.default = values[0]
+    }
     node.options = values.map((value) => ({ label: `${value}`, value }))
 
     return node
@@ -238,6 +245,12 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
 
     node.element = parse(_.element, `${node.path}[]`)
 
+    if (node.default === undefined) {
+      node.default = node.element.default === undefined
+        ? []
+        : [cloneDeep(node.element.default)]
+    }
+
     return node
   }
   if (_ instanceof z4.ZodRecord) {
@@ -264,9 +277,13 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
       Object.entries(_.shape).map(([key, value]) => [key, parse(value, `${node.path}.${key}`, key)])
     )
 
-    node.default = node.default || Object.fromEntries(
-      Object.entries(node.props || {}).map(([key, value]) => [key, value.default])
-    )
+    if (node.default === undefined) {
+      const default_object = Object.fromEntries(
+        Object.entries(node.props || {}).map(([key, value]) => [key, value.default])
+      )
+
+      node.default = cloneDeep(default_object)
+    }
 
     return node
   }
