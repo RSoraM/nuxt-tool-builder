@@ -21,7 +21,7 @@ import { isBoolean } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-watchEffect(() => {
+onMounted(() => {
   if (isBoolean(data.value)) return
 
   data.value = isBoolean(node.default)

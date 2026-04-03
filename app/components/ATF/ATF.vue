@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import z4 from 'zod/v4';
 import { cloneDeep } from 'lodash-es'
+import type { ATFNode, ATFTemplate } from '#shared/utils/atf'
 
 const data = defineModel()
 const {
@@ -52,26 +53,8 @@ const {
   label?: string
 }>()
 
-// 可行性验证
-const available = computed(() => {
-  try {
-    schema.toJSONSchema()
-    return true
-  }
-  catch (error) {
-    return false
-  }
-})
+// ─── unwrap: 递归剥离 Zod 包装器 ───
 
-// 实时验证
-const error = ref<z4.ZodError | undefined>(undefined)
-watch(
-  data,
-  () => error.value = schema.safeParse(data.value).error,
-  { deep: true, immediate: true }
-)
-
-// 去包装函数
 const unwrap = (schema: any, node?: ATFNode): { schema: z4.ZodType, node: ATFNode } => {
   if (!(schema instanceof z4.ZodType)) throw new Error(`不支持的 Zod 类型: ${schema}`)
   const meta = schema.meta()
@@ -126,12 +109,14 @@ const unwrap = (schema: any, node?: ATFNode): { schema: z4.ZodType, node: ATFNod
   return { schema, node }
 }
 
+// ─── apply_meta: 应用 meta 信息 ───
+
 const apply_meta = (
   node: ATFNode,
   meta: any,
   label: string | undefined,
   fallback_label: string,
-  fallback_template: typeof atf_templates.all[number]
+  fallback_template: ATFTemplate
 ) => {
   node.label = node.label || meta?.label || label || fallback_label
   node.hidden = node.hidden ?? meta?.hidden ?? false
@@ -141,7 +126,8 @@ const apply_meta = (
   node.autoComplete = node.autoComplete ?? meta?.autoComplete ?? 'off'
 }
 
-// 解析函数
+// ─── parse: Zod schema → ATFNode 树 ───
+
 const parse = (schema: any, path?: string, label?: string): ATFNode => {
   const { schema: _, node } = unwrap(schema)
 
@@ -184,7 +170,7 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     const meta = _.meta()
     apply_meta(node, meta, label, '单选', 'select')
 
-    node.options = _.options.map((value) => ({ label: `${value}`, value }))
+    node.options = _.options.map((value: any) => ({ label: `${value}`, value }))
 
     return node
   }
@@ -198,7 +184,7 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     if (node.default === undefined) {
       node.default = values[0]
     }
-    node.options = values.map((value) => ({ label: `${value}`, value }))
+    node.options = values.map((value: any) => ({ label: `${value}`, value }))
 
     return node
   }
@@ -208,14 +194,14 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     const meta = _.meta()
     apply_meta(node, meta, label, '模板字符串', 'template_literal')
 
-    node.template_literal = _.def.parts.map((part, index) => _ instanceof z4.ZodType
+    node.template_literal = _.def.parts.map((part: any, index: number) => _ instanceof z4.ZodType
       ? parse(part, node.path)
       : {
         schema: _,
 
         path: `__skip__${node.path}.${index}`,
         label: '',
-        template: 'text',
+        template: 'text' as ATFTemplate,
 
         disabled: true,
         autoComplete: 'off',
@@ -259,7 +245,6 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     const meta = _.meta()
     apply_meta(node, meta, label, '对象', 'record')
 
-
     node.record = {
       key: parse(_.def.keyType, `${node.path}.__key__`),
       value: parse(_.def.valueType, `${node.path}.__value__`),
@@ -295,36 +280,7 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     const meta = _.meta()
     apply_meta(node, meta, label, '元组', 'tuple')
 
-    node.tuple = _.def.items.map((item, index) => parse(item, `${node.path}[${index}]`))
-
-    return node
-  }
-  if (_ instanceof z4.ZodUnion) {
-    node.path = node.path || path || ''
-
-    const meta = _.meta()
-    apply_meta(node, meta, label, '联合', 'union')
-
-    node.union = _.def.options.map((option, index) => ({
-      label: `选项 ${index + 1}`,
-      value: option,
-      node: parse(option, `${node.path}.__option${index}__`),
-    }))
-
-    return node
-  }
-  if (_ instanceof z4.ZodDiscriminatedUnion) {
-    node.path = node.path || path || ''
-
-    const meta = _.meta()
-    apply_meta(node, meta, label, '联合', 'union')
-
-    // TODO: label 可以更友好一些，解析出 discriminant 的值（嵌套解析）
-    node.union = _.def.options.map((option, index) => ({
-      label: `选项 ${index + 1}`,
-      value: option,
-      node: parse(option, `${node.path}.__option${index}__`),
-    }))
+    node.tuple = _.def.items.map((item: any, index: number) => parse(item, `${node.path}[${index}]`))
 
     return node
   }
@@ -332,13 +288,57 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
   if (_ instanceof z4.ZodXor) throw new Error(`不支持的 Zod 类型: ${_.def.type}, 推荐使用 .ZodDiscriminatedUnion() 明确定义`)
   if (_ instanceof z4.ZodIntersection) throw new Error(`不支持的 Zod 类型: ${_.def.type}, 无法确定表单结构, 推荐使用 .extend() 明确定义`)
 
-  throw new Error(`不支持的 Zod 类型: ${_.def.type}`)
+  throw new Error(`不支持的 Zod 类型: ${(_ as any).def.type}`)
 }
+
+// ─── buildDefaults: 从 ATFNode 树构建完整默认值 ───
+
+const buildDefaults = (node: ATFNode): any => {
+  switch (node.template) {
+    case 'object':
+      if (node.props) {
+        return Object.fromEntries(
+          Object.entries(node.props).map(([key, child]) => [key, buildDefaults(child)])
+        )
+      }
+      return node.default !== undefined ? cloneDeep(node.default) : {}
+
+    case 'array':
+      return node.default !== undefined ? cloneDeep(node.default) : []
+
+    default:
+      return node.default !== undefined ? cloneDeep(node.default) : undefined
+  }
+}
+
+// 可行性验证
+const available = computed(() => {
+  try {
+    schema.toJSONSchema()
+    return true
+  }
+  catch (error) {
+    return false
+  }
+})
+
+// 实时验证
+const error = ref<z4.ZodError | undefined>(undefined)
+watch(
+  data,
+  () => error.value = schema.safeParse(data.value).error,
+  { deep: true, immediate: true }
+)
 
 // 生成表单树
 const node = available.value
   ? parse(schema, path)
   : undefined
+
+// 集中默认值初始化
+if (node && data.value === undefined) {
+  data.value = buildDefaults(node)
+}
 
 // 根节点是否为原型表单项
 const is_root_primitive = ref(available.value

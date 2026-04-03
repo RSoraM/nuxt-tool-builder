@@ -1,5 +1,5 @@
 <template>
-  <component :is="component_map[node.template]" :node="node" v-model="data">
+  <component :is="component" :node="node" v-model="data">
     <template #append>
       <slot name="append" />
     </template>
@@ -25,7 +25,6 @@ import {
   ATFToggle,
   ATFSelect,
   ATFFile,
-  ATFUnion,
 } from '#components'
 
 const data = defineModel()
@@ -34,7 +33,6 @@ const { node } = defineProps<{ node: ATFNode }>()
 const component_map = {
   'object': ATFObject,
   'array': ATFArray,
-  'union': ATFUnion,
   'text': ATFText,
   'textarea': ATFTextarea,
   'number': ATFNumber,
@@ -42,4 +40,5 @@ const component_map = {
   'select': ATFSelect,
   'file': ATFFile,
 } as Record<string, Component>
+const component = computed(() => component_map[node.template])
 </script>

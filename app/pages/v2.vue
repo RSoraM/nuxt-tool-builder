@@ -19,7 +19,7 @@ const schema = z4.object({
   str_arr: z4.string().array().meta({ label: '字符串数组' }),
   literal: z4.literal(['hello', 'world']).meta({ label: '字面量' }),
   enum: z4.enum(['hello', 'world']).meta({ label: '枚举' }),
-  union: z4.union([z4.object({ num: z4.number(), str: z4.string() }), z4.string()]).meta({ label: '联合' })
+  // union: z4.union([z4.object({ num: z4.number(), str: z4.string() }), z4.string()]).meta({ label: '联合' })
 })
   .meta({ label: '测试对象' })
   .array()

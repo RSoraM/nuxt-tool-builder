@@ -26,7 +26,7 @@ const onFileChange = (event: Event) => {
   data.value = target.files?.item(0) || null
 }
 
-watchEffect(() => {
+onMounted(() => {
   if (isFileValue(data.value)) return
 
   data.value = isFileValue(node.default)

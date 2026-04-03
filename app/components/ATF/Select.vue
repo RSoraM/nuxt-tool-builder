@@ -26,7 +26,7 @@ const { node } = defineProps<{ node: ATFNode }>()
 const options = computed(() => node.options || [])
 const hasOption = (value: any) => options.value.some((option) => Object.is(option.value, value))
 
-watchEffect(() => {
+onMounted(() => {
   if (hasOption(data.value)) return
 
   data.value = hasOption(node.default)

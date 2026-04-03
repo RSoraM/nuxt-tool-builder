@@ -7,10 +7,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:watch": "vitest watch"
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -30,8 +27,7 @@
     "@iconify/json": "^2.2.458",
     "@iconify/tailwind4": "^1.2.3",
     "@types/lodash-es": "^4.17.12",
-    "git-cz": "^4.9.0",
-    "vitest": "^4.1.2"
+    "git-cz": "^4.9.0"
   },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }

@@ -1,7 +1,7 @@
 <template>
   <ATFFieldset :legend="node.label">
     <template #append>
-      <button class="btn btn-primary btn-xs" @click="append_item">
+      <button class="btn btn-primary btn-xs" @click="append_item()">
         添加
       </button>
     </template>
@@ -13,7 +13,7 @@
     <ATFNode v-for="(item, index) in data" :key="resolve_item_key(item, index)" :node="node.element!"
       v-model="data[index]">
       <template #delete>
-        <button class="btn btn-error" :class="resolve_delete_class()" @click="data.splice(index, 1)">
+        <button class="btn btn-error" :class="resolve_delete_class()" @click="() => delete_item(Number(index))">
           删除
         </button>
       </template>
@@ -49,18 +49,17 @@ const resolve_item_key = (item: unknown, index: string | number) => {
     return `atf-array-object-${object_item_keys.get(target)}`
   }
 
-  return `atf-array-primitive-${index}-${String(item)}`
+  return `atf-array-primitive-${index}`
 }
 
 const append_item = () => {
-  if (!isArray(data.value)) {
-    data.value = []
-  }
-
   data.value.push(cloneDeep(node.element?.default))
 }
+const delete_item = (index: number) => {
+  data.value.splice(index, 1)
+}
 
-watchEffect(() => {
+onMounted(() => {
   if (isArray(data.value)) return
 
   data.value = isArray(node.default)

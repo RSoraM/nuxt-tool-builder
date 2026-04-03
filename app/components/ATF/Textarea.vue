@@ -17,7 +17,7 @@ import { isString } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-watchEffect(() => {
+onMounted(() => {
   if (isString(data.value)) return
 
   data.value = isString(node.default)

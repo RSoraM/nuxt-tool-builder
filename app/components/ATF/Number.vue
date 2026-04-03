@@ -19,7 +19,7 @@ const { node } = defineProps<{ node: ATFNode }>()
 
 const isValidNumber = (value: unknown): value is number => isNumber(value) && !Number.isNaN(value)
 
-watchEffect(() => {
+onMounted(() => {
   if (isValidNumber(data.value)) return
 
   data.value = isValidNumber(node.default)
