@@ -26,11 +26,9 @@ const { node } = defineProps<{ node: ATFNode }>()
 const options = computed(() => node.options || [])
 const hasOption = (value: any) => options.value.some((option) => Object.is(option.value, value))
 
-onMounted(() => {
-  if (hasOption(data.value)) return
-
+if (!hasOption(data.value)) {
   data.value = hasOption(node.default)
     ? node.default
     : options.value[0]?.value
-})
+}
 </script>

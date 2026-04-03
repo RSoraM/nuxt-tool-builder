@@ -26,11 +26,9 @@ const onFileChange = (event: Event) => {
   data.value = target.files?.item(0) || null
 }
 
-onMounted(() => {
-  if (isFileValue(data.value)) return
-
+if (!isFileValue(data.value)) {
   data.value = isFileValue(node.default)
     ? node.default
     : null
-})
+}
 </script>

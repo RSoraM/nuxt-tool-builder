@@ -40,7 +40,7 @@ import z4 from 'zod/v4';
 import { cloneDeep } from 'lodash-es'
 import type { ATFNode, ATFTemplate } from '#shared/utils/atf'
 
-const data = defineModel()
+const modelValue = defineModel()
 const {
   schema,
   is_root = true,
@@ -194,7 +194,7 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     const meta = _.meta()
     apply_meta(node, meta, label, '模板字符串', 'template_literal')
 
-    node.template_literal = _.def.parts.map((part: any, index: number) => _ instanceof z4.ZodType
+    node.template_literal = _.def.parts.map((part: any, index: number) => part instanceof z4.ZodType
       ? parse(part, node.path)
       : {
         schema: _,
@@ -285,6 +285,29 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     return node
   }
 
+  // 联合表单项
+  if (_ instanceof z4.ZodDiscriminatedUnion) {
+    node.path = node.path || path || ''
+
+    const meta = _.meta()
+    apply_meta(node, meta, label, '联合', 'union')
+
+    node.discriminator = _.def.discriminator
+    node.union = _.options.map((option: any, index: number) => parse(option, `${node.path}.__union__[${index}]`))
+
+    return node
+  }
+  if (_ instanceof z4.ZodUnion) {
+    node.path = node.path || path || ''
+
+    const meta = _.meta()
+    apply_meta(node, meta, label, '联合', 'union')
+
+    node.union = _.options.map((option: any, index: number) => parse(option, `${node.path}.__union__[${index}]`))
+
+    return node
+  }
+
   if (_ instanceof z4.ZodXor) throw new Error(`不支持的 Zod 类型: ${_.def.type}, 推荐使用 .ZodDiscriminatedUnion() 明确定义`)
   if (_ instanceof z4.ZodIntersection) throw new Error(`不支持的 Zod 类型: ${_.def.type}, 无法确定表单结构, 推荐使用 .extend() 明确定义`)
 
@@ -306,6 +329,27 @@ const buildDefaults = (node: ATFNode): any => {
     case 'array':
       return node.default !== undefined ? cloneDeep(node.default) : []
 
+    case 'tuple':
+      if (node.tuple) {
+        return node.tuple.map(child => buildDefaults(child))
+      }
+      return node.default !== undefined ? cloneDeep(node.default) : []
+
+    case 'record':
+      return node.default !== undefined ? cloneDeep(node.default) : {}
+
+    case 'template_literal':
+      if (node.template_literal) {
+        return node.template_literal.map(part => part.default ?? '').join('')
+      }
+      return node.default !== undefined ? cloneDeep(node.default) : ''
+
+    case 'union':
+      if (node.union && node.union.length > 0) {
+        return buildDefaults(node.union[0]!)
+      }
+      return node.default !== undefined ? cloneDeep(node.default) : undefined
+
     default:
       return node.default !== undefined ? cloneDeep(node.default) : undefined
   }
@@ -322,6 +366,22 @@ const available = computed(() => {
   }
 })
 
+// 生成表单树
+const node = available.value
+  ? parse(schema, path)
+  : undefined
+
+// ─── 本地数据：绕过 defineModel 在 SSR 中 set 后 get 仍为旧值的问题 ───
+const data = ref(modelValue.value)
+
+// 集中默认值初始化
+if (node && data.value === undefined) {
+  data.value = buildDefaults(node)
+}
+
+// 同步 data → modelValue (向父组件传递)
+watch(data, v => { modelValue.value = v }, { deep: true, immediate: true })
+
 // 实时验证
 const error = ref<z4.ZodError | undefined>(undefined)
 watch(
@@ -329,16 +389,6 @@ watch(
   () => error.value = schema.safeParse(data.value).error,
   { deep: true, immediate: true }
 )
-
-// 生成表单树
-const node = available.value
-  ? parse(schema, path)
-  : undefined
-
-// 集中默认值初始化
-if (node && data.value === undefined) {
-  data.value = buildDefaults(node)
-}
 
 // 根节点是否为原型表单项
 const is_root_primitive = ref(available.value

@@ -25,6 +25,10 @@ import {
   ATFToggle,
   ATFSelect,
   ATFFile,
+  ATFTuple,
+  ATFRecord,
+  ATFTemplateLiteral,
+  ATFUnion,
 } from '#components'
 
 const data = defineModel()
@@ -39,6 +43,10 @@ const component_map = {
   'toggle': ATFToggle,
   'select': ATFSelect,
   'file': ATFFile,
+  'tuple': ATFTuple,
+  'record': ATFRecord,
+  'template_literal': ATFTemplateLiteral,
+  'union': ATFUnion,
 } as Record<string, Component>
 const component = computed(() => component_map[node.template])
 </script>

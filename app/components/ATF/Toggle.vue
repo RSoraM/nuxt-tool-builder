@@ -1,16 +1,15 @@
 <template>
-  <label class="label">{{ node.label }}</label>
   <template v-if="$slots.delete">
-    <div class="join">
-      <div class="join-item input input-bordered w-full flex items-center">
-        <input type="checkbox" class="toggle toggle-primary" v-model="data" />
-      </div>
+    <div class="w-full flex items-center justify-between">
+      <label class="label">{{ node.label }}</label>
+      <input type="checkbox" class="toggle" v-model="data" />
       <slot name="delete" />
     </div>
   </template>
   <template v-else>
-    <div class="input input-bordered w-full flex items-center">
-      <input type="checkbox" class="toggle toggle-primary" v-model="data" />
+    <div class="w-full flex items-center justify-between">
+      <label class="label">{{ node.label }}</label>
+      <input type="checkbox" class="toggle" v-model="data" />
     </div>
   </template>
 </template>
@@ -21,11 +20,9 @@ import { isBoolean } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-onMounted(() => {
-  if (isBoolean(data.value)) return
-
+if (!isBoolean(data.value)) {
   data.value = isBoolean(node.default)
     ? node.default
     : false
-})
+}
 </script>

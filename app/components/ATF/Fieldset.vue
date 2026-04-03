@@ -3,7 +3,7 @@
     <legend class="legend flex items-center gap-2">
       <slot name="delete" />
       <slot name="legend">
-        <span>{{ legend }}</span>
+        <span class="flex shrink-0">{{ legend }}</span>
       </slot>
       <slot name="append" />
     </legend>

@@ -4,7 +4,7 @@
       <slot name="delete" />
     </template>
 
-    <ATFNode v-for="[key, value] in Object.entries(node.props || {})" :key="key" :node="value" v-model="data[key]" />
+    <ATFNode v-for="(child, index) in node.tuple" :key="index" :node="child" v-model="data[index]" />
 
     <slot />
     <slot name="actions" />
@@ -12,14 +12,14 @@
 </template>
 
 <script setup lang="ts">
-import { cloneDeep, isObject } from 'lodash-es'
+import { cloneDeep, isArray } from 'lodash-es'
 
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-if (!isObject(data.value)) {
-  data.value = isObject(node.default)
+if (!isArray(data.value) || data.value.length !== node.tuple?.length) {
+  data.value = isArray(node.default)
     ? cloneDeep(node.default)
-    : {}
+    : (node.tuple || []).map(() => undefined)
 }
 </script>

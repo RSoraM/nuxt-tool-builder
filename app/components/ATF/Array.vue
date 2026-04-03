@@ -59,11 +59,9 @@ const delete_item = (index: number) => {
   data.value.splice(index, 1)
 }
 
-onMounted(() => {
-  if (isArray(data.value)) return
-
+if (!isArray(data.value)) {
   data.value = isArray(node.default)
     ? cloneDeep(node.default)
     : []
-})
+}
 </script>
