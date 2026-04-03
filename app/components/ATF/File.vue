@@ -19,16 +19,18 @@ const { node } = defineProps<{ node: ATFNode }>()
 
 const isFileValue = (value: unknown): value is File => typeof File !== 'undefined' && value instanceof File
 
-data.value = isFileValue(data.value)
-  ? data.value
-  : isFileValue(node.default)
-    ? node.default
-    : null
-
 const fileName = computed(() => isFileValue(data.value) ? data.value.name : '')
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   data.value = target.files?.item(0) || null
 }
+
+onMounted(() => {
+  data.value = isFileValue(data.value)
+    ? data.value
+    : isFileValue(node.default)
+      ? node.default
+      : null
+})
 </script>

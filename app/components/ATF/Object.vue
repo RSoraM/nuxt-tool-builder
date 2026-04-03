@@ -17,9 +17,11 @@ import { isObject } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-data.value = isObject(data.value)
-  ? data.value
-  : isObject(node.default)
-    ? node.default
-    : {}
+onMounted(() => {
+  data.value = isObject(data.value)
+    ? data.value
+    : isObject(node.default)
+      ? node.default
+      : {}
+})
 </script>

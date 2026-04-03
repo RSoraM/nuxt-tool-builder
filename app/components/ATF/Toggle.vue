@@ -21,9 +21,11 @@ import { isBoolean } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-data.value = isBoolean(data.value)
-  ? data.value
-  : isBoolean(node.default)
-    ? node.default
-    : false
+onMounted(() => {
+  data.value = isBoolean(data.value)
+    ? data.value
+    : isBoolean(node.default)
+      ? node.default
+      : false
+})
 </script>

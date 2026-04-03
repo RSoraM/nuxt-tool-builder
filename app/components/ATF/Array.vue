@@ -13,7 +13,8 @@
     <template v-for="(_, index) in data">
       <ATFNode :node="node.element!" v-model="data[index]">
         <template #delete>
-          <button class="btn btn-error" :class="!primitive_templates.includes(node.element!.template) ? 'btn-xs' : ''"
+          <button class="btn btn-error"
+            :class="!primitive_templates.includes(node.element!.template) ? 'btn-xs' : 'join-item'"
             @click="data.splice(index, 1)">
             删除
           </button>
@@ -32,9 +33,11 @@ import { isArray } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-data.value = isArray(data.value)
-  ? data.value
-  : isArray(node.default)
-    ? node.default
-    : []
+onMounted(() => {
+  data.value = isArray(data.value)
+    ? data.value
+    : isArray(node.default)
+      ? node.default
+      : []
+})
 </script>

@@ -5,6 +5,7 @@
         <ATFFieldset :legend="label">
           <ATFNode :node="node!" v-model="data" />
 
+          <pre v-if="error" class="mt-4 text-sm text-error">{{ z4.prettifyError(error) }}</pre>
           <template #actions>
             <slot />
           </template>
@@ -13,6 +14,8 @@
 
       <template v-else>
         <ATFNode :node="node!" v-model="data">
+
+          <pre v-if="error" class="mt-4 text-sm text-error">{{ z4.prettifyError(error) }}</pre>
           <template #actions>
             <slot />
           </template>
@@ -47,19 +50,20 @@ const {
   path?: string
   label?: string
 }>()
-const error = ref<z4.ZodError | undefined>(undefined)
 
 // 可行性验证
-const available = ref(true)
-try {
-  schema.toJSONSchema()
-  available.value = true
-}
-catch (error) {
-  available.value = false
-}
+const available = computed(() => {
+  try {
+    schema.toJSONSchema()
+    return true
+  }
+  catch (error) {
+    return false
+  }
+})
 
 // 实时验证
+const error = ref<z4.ZodError | undefined>(undefined)
 watch(
   data,
   () => error.value = schema.safeParse(data.value).error,
@@ -121,7 +125,7 @@ const parse = (schema: any, path?: string, label?: string): ATFNode => {
     node.label = meta?.label || node.label || label || '字符串'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
-    node.template = meta?.template || 'string'
+    node.template = meta?.template || 'text'
     node.placeholder = meta?.placeholder
     node.autoComplete = meta?.autoComplete || 'off'
 
@@ -368,7 +372,7 @@ const node = available.value
 
 // 根节点是否为原型表单项
 const is_root_primitive = ref(available.value
-  ? primitive_templates.includes(node!.template)
+  ? atf_templates.primitive.includes(node!.template as any)
   : false
 )
 </script>

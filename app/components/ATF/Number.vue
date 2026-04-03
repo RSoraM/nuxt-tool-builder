@@ -19,9 +19,11 @@ const { node } = defineProps<{ node: ATFNode }>()
 
 const isValidNumber = (value: unknown): value is number => isNumber(value) && !Number.isNaN(value)
 
-data.value = isValidNumber(data.value)
-  ? data.value
-  : isValidNumber(node.default)
-    ? node.default
-    : 0
+onMounted(() => {
+  data.value = isValidNumber(data.value)
+    ? data.value
+    : isValidNumber(node.default)
+      ? node.default
+      : 0
+})
 </script>

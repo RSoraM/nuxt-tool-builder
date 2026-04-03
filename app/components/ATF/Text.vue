@@ -17,9 +17,11 @@ import { isString } from 'lodash-es'
 const data = defineModel<any>()
 const { node } = defineProps<{ node: ATFNode }>()
 
-data.value = isString(data.value)
-  ? data.value
-  : isString(node.default)
-    ? node.default
-    : ''
+onMounted(() => {
+  data.value = isString(data.value)
+    ? data.value
+    : isString(node.default)
+      ? node.default
+      : ''
+})
 </script>

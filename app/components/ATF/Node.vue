@@ -19,7 +19,8 @@
 import {
   ATFObject,
   ATFArray,
-  ATFString,
+  ATFText,
+  ATFTextarea,
   ATFNumber,
   ATFToggle,
   ATFSelect,
@@ -32,7 +33,8 @@ const { node } = defineProps<{ node: ATFNode }>()
 const component_map = {
   'object': ATFObject,
   'array': ATFArray,
-  'string': ATFString,
+  'text': ATFText,
+  'textarea': ATFTextarea,
   'number': ATFNumber,
   'toggle': ATFToggle,
   'select': ATFSelect,
