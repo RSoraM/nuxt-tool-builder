@@ -350,6 +350,10 @@ const buildDefaults = (node: ATFNode): any => {
       }
       return node.default !== undefined ? cloneDeep(node.default) : undefined
 
+    case 'json':
+    case 'codemirror':
+      return node.default !== undefined ? cloneDeep(node.default) : null
+
     default:
       return node.default !== undefined ? cloneDeep(node.default) : undefined
   }

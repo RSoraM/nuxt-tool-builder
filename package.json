@@ -10,7 +10,9 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@codemirror/lang-json": "^6.0.2",
     "@tailwindcss/vite": "^4.2.2",
+    "codemirror": "^6.0.2",
     "daisyui": "^5.5.19",
     "lodash-es": "^4.18.1",
     "mima-kit": "^0.1.1",

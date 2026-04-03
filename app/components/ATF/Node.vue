@@ -29,6 +29,8 @@ import {
   ATFRecord,
   ATFTemplateLiteral,
   ATFUnion,
+  ATFJson,
+  ATFCodeMirror,
 } from '#components'
 
 const data = defineModel()
@@ -47,6 +49,8 @@ const component_map = {
   'record': ATFRecord,
   'template_literal': ATFTemplateLiteral,
   'union': ATFUnion,
+  'json': ATFJson,
+  'codemirror': ATFCodeMirror,
 } as Record<string, Component>
 const component = computed(() => component_map[node.template])
 </script>

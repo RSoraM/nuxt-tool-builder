@@ -3,8 +3,8 @@ import z4 from "zod/v4";
 // ─── Template 分类 ───
 
 export const primitive_templates = ['', 'text', 'textarea', 'number', 'toggle', 'file', 'select'] as const
-export const composite_templates = ['object', 'array', 'record', 'tuple', 'template_literal', 'union'] as const
-export const unimplemented_templates = ['json'] as const
+export const composite_templates = ['object', 'array', 'record', 'tuple', 'template_literal', 'union', 'json', 'codemirror'] as const
+export const unimplemented_templates = [] as const
 
 export type ATFTemplate =
   | typeof primitive_templates[number]

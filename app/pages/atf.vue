@@ -1,17 +1,19 @@
 <template>
   <section class="rounded-box p-4 bg-base-100 flex flex-col gap-4">
-    <ATF :schema="schema" v-model="data">
+    <ATF :schema="json_schema" v-model="data">
     </ATF>
     <button class="btn btn-primary mt-8" @click="handle_submit"> 提交 </button>
   </section>
 
   <section class="rounded-box p-4 bg-base-100">
-    <pre>{{ data }}</pre>
+    <pre class="font-mono">{{ data }}</pre>
   </section>
 </template>
 
 <script setup lang="ts">
 import z4 from 'zod/v4';
+
+const json_schema = z4.json().meta({ label: 'JSON编辑器', template: 'codemirror' })
 
 const schema = z4.object({
   text: z4.string().nonempty().default('hello').meta({ label: '文本' }),
