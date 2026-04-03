@@ -8,5 +8,7 @@
         <NuxtPage />
       </main>
     </section>
+
+    <ToastContainer />
   </div>
 </template>
