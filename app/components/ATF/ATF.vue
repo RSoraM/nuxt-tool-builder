@@ -1,11 +1,26 @@
 <template>
   <template v-if="available">
     <form @submit.prevent="">
-      TODO
-    </form>
+      <template v-if="is_root && is_root_primitive">
+        <ATFFieldset :legend="label">
+          <ATFNode :node="node!" v-model="data" />
 
-    <pre class="mt-8">{{ node }}</pre>
+          <template #actions>
+            <slot />
+          </template>
+        </ATFFieldset>
+      </template>
+
+      <template v-else>
+        <ATFNode :node="node!" v-model="data">
+          <template #actions>
+            <slot />
+          </template>
+        </ATFNode>
+      </template>
+    </form>
   </template>
+
   <template v-else>
     <div class="alert alert-error">
       <span class="icon-[carbon--warning-filled] size-4"></span>
@@ -47,23 +62,26 @@ catch (error) {
 // 实时验证
 watch(
   data,
-  () => {
-    error.value = undefined
-    const result = schema.safeParse(data.value)
-    error.value = result.error
-  },
+  () => error.value = schema.safeParse(data.value).error,
   { deep: true, immediate: true }
 )
 
 // 去包装函数
 const unwrap = (schema: any, node?: ATFNode): { schema: z4.ZodType, node: ATFNode } => {
+  if (!(schema instanceof z4.ZodType)) throw new Error(`不支持的 Zod 类型: ${schema}`)
+  const meta = schema.meta()
   node = node || {
     schema,
 
     path: '',
-    label: '',
-    template: '',
+    label: meta?.label || '',
+    template: meta?.template || '',
     required: false,
+
+    placeholder: meta?.placeholder,
+    autoComplete: meta?.autoComplete || 'off',
+    disabled: meta?.disabled || false,
+    hidden: meta?.hidden || false,
   }
 
   if (schema instanceof z4.ZodOptional) {
@@ -92,7 +110,7 @@ const unwrap = (schema: any, node?: ATFNode): { schema: z4.ZodType, node: ATFNod
 }
 
 // 解析函数
-const parse = (schema: any, path?: string): ATFNode => {
+const parse = (schema: any, path?: string, label?: string): ATFNode => {
   const { schema: _, node } = unwrap(schema)
 
   // 原型表单项
@@ -100,10 +118,10 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '字符串'
+    node.label = meta?.label || node.label || label || '字符串'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
-    node.template = meta?.template || 'text'
+    node.template = meta?.template || 'string'
     node.placeholder = meta?.placeholder
     node.autoComplete = meta?.autoComplete || 'off'
 
@@ -113,7 +131,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '数字'
+    node.label = meta?.label || node.label || label || '数字'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'number'
@@ -126,7 +144,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '开关'
+    node.label = meta?.label || node.label || label || '开关'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'toggle'
@@ -139,7 +157,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '文件'
+    node.label = meta?.label || node.label || label || '文件'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'file'
@@ -152,7 +170,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '单选'
+    node.label = meta?.label || node.label || label || '单选'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'select'
@@ -167,7 +185,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '常量'
+    node.label = meta?.label || node.label || label || '常量'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'select'
@@ -184,7 +202,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '模板字符串'
+    node.label = meta?.label || node.label || label || '模板字符串'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'template_literal'
@@ -214,7 +232,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || 'JSON'
+    node.label = meta?.label || node.label || label || 'JSON'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'json'
@@ -229,7 +247,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '数组'
+    node.label = meta?.label || node.label || label || '数组'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'array'
@@ -244,7 +262,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '对象'
+    node.label = meta?.label || node.label || label || '对象'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'record'
@@ -263,7 +281,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '对象'
+    node.label = meta?.label || node.label || label || '对象'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'object'
@@ -271,7 +289,11 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.autoComplete = meta?.autoComplete || 'off'
 
     node.props = Object.fromEntries(
-      Object.entries(_.shape).map(([key, value]) => [key, parse(value, `${node.path}.${key}`)])
+      Object.entries(_.shape).map(([key, value]) => [key, parse(value, `${node.path}.${key}`, key)])
+    )
+
+    node.default = node.default || Object.fromEntries(
+      Object.entries(node.props || {}).map(([key, value]) => [key, value.default])
     )
 
     return node
@@ -282,7 +304,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '元组'
+    node.label = meta?.label || node.label || label || '元组'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'tuple'
@@ -297,7 +319,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '联合'
+    node.label = meta?.label || node.label || label || '联合'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'union'
@@ -316,7 +338,7 @@ const parse = (schema: any, path?: string): ATFNode => {
     node.path = node.path || path || ''
 
     const meta = _.meta()
-    node.label = meta?.label || node.label || '联合'
+    node.label = meta?.label || node.label || label || '联合'
     node.hidden = meta?.hidden || false
     node.disabled = meta?.disabled || false
     node.template = meta?.template || 'union'
@@ -345,40 +367,8 @@ const node = available.value
   : undefined
 
 // 根节点是否为原型表单项
-const primitive_templates = ['string', 'number', 'bigint', 'boolean', 'file']
 const is_root_primitive = ref(available.value
   ? primitive_templates.includes(node!.template)
   : false
 )
-
-interface ATFNode {
-  schema: z4.ZodType
-
-  path: string;
-  label: string;
-  template: string
-
-  hidden?: boolean;
-  disabled?: boolean;
-  placeholder?: string;
-  autoComplete?: string;
-
-  // object
-  props?: { [key: string]: ATFNode }
-  // array
-  element?: ATFNode
-  // tuple
-  tuple?: ATFNode[]
-  // template literal
-  template_literal?: ATFNode[]
-  // record
-  record?: { key: ATFNode, value: ATFNode }
-  // union & discriminated union
-  union?: { label: string; value: any, node: ATFNode }[]
-  options?: { label: string; value: any }[]
-
-  // 由 unwrap 函数解析得到
-  required: boolean
-  default?: any
-}
 </script>
