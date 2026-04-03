@@ -6,7 +6,7 @@
 
     <div class="flex-none gap-2">
       <NuxtLink to="/" class="btn btn-ghost">主页</NuxtLink>
-      <NuxtLink to="/v2" class="btn btn-ghost">ATF v2</NuxtLink>
+      <NuxtLink to="/atf" class="btn btn-ghost">ATF</NuxtLink>
     </div>
   </div>
 </template>
