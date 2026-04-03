@@ -25,6 +25,7 @@ import {
   ATFToggle,
   ATFSelect,
   ATFFile,
+  ATFUnion,
 } from '#components'
 
 const data = defineModel()
@@ -33,6 +34,7 @@ const { node } = defineProps<{ node: ATFNode }>()
 const component_map = {
   'object': ATFObject,
   'array': ATFArray,
+  'union': ATFUnion,
   'text': ATFText,
   'textarea': ATFTextarea,
   'number': ATFNumber,
